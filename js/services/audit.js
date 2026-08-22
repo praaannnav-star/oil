@@ -20,6 +20,7 @@ export const AuditService = {
       detail
     };
     API.auditLogs.unshift(entry);
+    API.persist('auditLogs');
     return entry;
   }
 };

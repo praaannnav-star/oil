@@ -160,6 +160,7 @@ export const ReportsService = {
       await DB.addPendingReport(newReport);
     } else {
       API.reports.unshift(newReport);
+      API.persist('reports');
 
       // Also create a review item
       const reviewItem = {
@@ -182,6 +183,7 @@ export const ReportsService = {
         age: 'Just now'
       };
       API.reviewItems.unshift(reviewItem);
+      API.persist('reviewItems');
 
       // Audit trail
       await AuditService.appendAudit({

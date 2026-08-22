@@ -37,6 +37,7 @@ export const ActivitiesService = {
     const index = API.activities.findIndex(a => a.id === id || a.code === id);
     if (index !== -1) {
       API.activities[index] = { ...API.activities[index], ...patch };
+      API.persist('activities');
       return API.activities[index];
     }
     return null;

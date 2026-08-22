@@ -46,6 +46,7 @@ export const ReviewService = {
       });
     }
 
+    API.persist('reviewItems');
     return item;
   },
 
@@ -70,6 +71,7 @@ export const ReviewService = {
       });
     }
 
+    API.persist('reviewItems');
     return item;
   }
 };

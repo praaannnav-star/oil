@@ -70,14 +70,15 @@ class SyncManager {
         });
 
         await DB.removePendingReport(report.id);
-        successCount++;
-      } catch (err) {
+        successCount++;      } catch (err) {
         console.error('Failed to sync item:', report.id, err);
       }
     }
 
     this.isSyncing = false;
     State.setConnectionStatus('online');
+    API.persist('reports', true);
+    API.persist('reviewItems', true);
     await this.updatePendingCount();
 
     if (successCount > 0) {

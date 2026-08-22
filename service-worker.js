@@ -1,4 +1,4 @@
-const CACHE_NAME = 'oil-tracker-v2';
+const CACHE_NAME = 'oil-tracker-v3';
 const APP_SHELL = [
   './',
   './index.html',
@@ -18,6 +18,7 @@ const APP_SHELL = [
   './js/sync.js',
   './js/offline.js',
   './js/pwa.js',
+  './js/utils/dom.js',
   './js/services/auth.js',
   './js/services/api.js',
   './js/services/projects.js',
@@ -51,6 +52,7 @@ const APP_SHELL = [
   './js/components/EvidenceViewer.js',
   './js/components/Icons.js',
   './js/views/Login.js',
+  './js/views/Landing.js',
   './js/views/Overview.js',
   './js/views/ProjectList.js',
   './js/views/ProjectDetail.js',
@@ -61,7 +63,10 @@ const APP_SHELL = [
   './js/views/Evidence.js',
   './js/views/Analytics.js',
   './js/views/ExecutionMemory.js',
-  './js/views/AuditTrail.js'
+  './js/views/AuditTrail.js',
+  './js/views/AdminPanel.js',
+  './js/views/ProjectManagerPanel.js',
+  './js/views/ProjectForm.js'
 ];
 
 self.addEventListener('install', (event) => {

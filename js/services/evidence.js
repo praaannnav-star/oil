@@ -18,6 +18,7 @@ export const EvidenceService = {
       ...evidenceItem
     };
     API.evidence.unshift(item);
+    API.persist('evidence');
     return item;
   }
 };

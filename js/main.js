@@ -31,6 +31,9 @@ import { ProjectsService } from './services/projects.js';
 
 // Application Bootstrap
 document.addEventListener('DOMContentLoaded', async () => {
+  // 0. Hydrate persisted domain collections from IndexedDB before any view renders
+  await API.init();
+
   // 1. Initialize PWA & Offline & Sync subsystems
   await PWA.init();
   Offline.init();

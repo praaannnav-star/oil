@@ -1,4 +1,7 @@
-// API abstraction layer with seamless mock data vs live Cloudflare Workers switch
+// API abstraction layer with seamless mock data vs live Cloudflare Workers switch.
+// P1: all runtime collections are hydrated from IndexedDB on startup and
+// persisted (debounced) after every mutation, so state survives page refreshes.
+import { DB } from '../db.js';
 import { MOCK_PROJECTS } from '../data/mock-projects.js';
 import { MOCK_ACTIVITIES } from '../data/mock-activities.js';
 import { MOCK_REPORTS } from '../data/mock-reports.js';
@@ -6,28 +9,114 @@ import { MOCK_EVIDENCE } from '../data/mock-evidence.js';
 import { MOCK_REVIEW_ITEMS } from '../data/mock-review.js';
 import { MOCK_AUDIT_LOG } from '../data/mock-audit.js';
 
+const COLLECTIONS = ['projects', 'activities', 'reports', 'evidence', 'reviewItems', 'auditLogs'];
+const SEEDS = {
+  projects: MOCK_PROJECTS,
+  activities: MOCK_ACTIVITIES,
+  reports: MOCK_REPORTS,
+  evidence: MOCK_EVIDENCE,
+  reviewItems: MOCK_REVIEW_ITEMS,
+  auditLogs: MOCK_AUDIT_LOG
+};
+const PERSIST_DEBOUNCE_MS = 200;
+
 class ApiService {
   constructor() {
     this.useMock = true; // Easily switched to false when Cloudflare Workers endpoint is configured
     this.baseUrl = '/api';
 
-    // In-memory runtime state for demo updates
-    this.projects = this.loadProjects();
+    // In-memory runtime state — hydrated in init() before first render
+    this.projects = JSON.parse(JSON.stringify(MOCK_PROJECTS));
     this.activities = JSON.parse(JSON.stringify(MOCK_ACTIVITIES));
     this.reports = JSON.parse(JSON.stringify(MOCK_REPORTS));
     this.evidence = JSON.parse(JSON.stringify(MOCK_EVIDENCE));
     this.reviewItems = JSON.parse(JSON.stringify(MOCK_REVIEW_ITEMS));
     this.auditLogs = JSON.parse(JSON.stringify(MOCK_AUDIT_LOG));
+
+    this._hydrated = false;
+    this._initPromise = null;
+    this._saveTimers = {};
+
+    // Flush any pending debounced writes when the page is hidden or closed,
+    // so a refresh during the debounce window never loses submitted data.
+    const flushPendingWrites = () => {
+      for (const name of COLLECTIONS) {
+        if (this._saveTimers[name]) {
+          clearTimeout(this._saveTimers[name]);
+          delete this._saveTimers[name];
+          if (this._hydrated) DB.saveEntity(name, this[name]);
+        }
+      }
+    };
+    try {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') flushPendingWrites();
+      });
+      window.addEventListener('pagehide', flushPendingWrites);
+    } catch (err) {
+      console.warn('Lifecycle flush listeners unavailable', err);
+    }
+  }
+
+  // Called once from main.js before the router renders any view.
+  async init() {
+    if (this._initPromise) return this._initPromise;
+    this._initPromise = this._hydrate();
+    return this._initPromise;
+  }
+
+  async _hydrate() {
+    for (const name of COLLECTIONS) {
+      let stored = null;
+      try {
+        stored = await DB.getEntity(name);
+      } catch (err) {
+        console.warn(`Entity "${name}" could not be read; falling back to seed data`, err);
+      }
+
+      if (Array.isArray(stored) && stored.length > 0) {
+        this[name] = stored;
+      } else if (name === 'projects') {
+        // One-time migration from the pre-P1 localStorage persistence layer
+        const legacy = this.loadProjects();
+        this.projects = legacy;
+        await DB.saveEntity('projects', legacy);
+      }
+      // Empty-but-existing collections stay as seeded mocks and get written
+      // back lazily by persist() on the next mutation.
+    }
+    this._hydrated = true;
+  }
+
+  isHydrated() {
+    return this._hydrated;
+  }
+
+  // Debounced whole-collection snapshot to IndexedDB after mutations.
+  persist(collection, immediate = false) {
+    if (!COLLECTIONS.includes(collection)) {
+      console.warn(`persist(): unknown collection "${collection}"`);
+      return;
+    }
+    clearTimeout(this._saveTimers[collection]);
+    const write = () => DB.saveEntity(collection, this[collection]);
+    if (immediate) {
+      write();
+    } else {
+      this._saveTimers[collection] = setTimeout(write, PERSIST_DEBOUNCE_MS);
+    }
   }
 
   resetDemoData() {
-    this.projects = JSON.parse(JSON.stringify(MOCK_PROJECTS));
-    this.persistProjects();
-    this.activities = JSON.parse(JSON.stringify(MOCK_ACTIVITIES));
-    this.reports = JSON.parse(JSON.stringify(MOCK_REPORTS));
-    this.evidence = JSON.parse(JSON.stringify(MOCK_EVIDENCE));
-    this.reviewItems = JSON.parse(JSON.stringify(MOCK_REVIEW_ITEMS));
-    this.auditLogs = JSON.parse(JSON.stringify(MOCK_AUDIT_LOG));
+    for (const name of COLLECTIONS) {
+      this[name] = JSON.parse(JSON.stringify(SEEDS[name]));
+      this.persist(name, true);
+    }
+    try {
+      localStorage.removeItem('oil_demo_projects');
+    } catch (error) {
+      console.warn('Could not clear legacy demo projects storage', error);
+    }
   }
 
   loadProjects() {
@@ -41,6 +130,7 @@ class ApiService {
   }
 
   persistProjects() {
+    this.persist('projects');
     try {
       localStorage.setItem('oil_demo_projects', JSON.stringify(this.projects));
     } catch (error) {

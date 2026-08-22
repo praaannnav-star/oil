@@ -106,6 +106,43 @@ class Database {
       req.onerror = () => resolve([]);
     });
   }
+
+  // --- Generic entity persistence (P1) ---
+  // Whole-collection snapshots keyed by collection name in the 'cachedData'
+  // store. The in-memory arrays remain the runtime source of truth; these
+  // methods make them survive page refreshes.
+  async getEntity(key) {
+    const db = await this.getDb();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction('cachedData', 'readonly');
+        const req = tx.objectStore('cachedData').get(key);
+        req.onsuccess = () => resolve(req.result ? req.result.value : null);
+        req.onerror = () => resolve(null);
+      } catch (err) {
+        console.warn(`Could not read entity "${key}" from IndexedDB`, err);
+        resolve(null);
+      }
+    });
+  }
+
+  async saveEntity(key, value) {
+    const db = await this.getDb();
+    if (!db) return false;
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction('cachedData', 'readwrite');
+        tx.objectStore('cachedData').put({ key, value, savedAt: Date.now() });
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+        tx.onabort = () => resolve(false);
+      } catch (err) {
+        console.warn(`Could not save entity "${key}" to IndexedDB`, err);
+        resolve(false);
+      }
+    });
+  }
 }
 
 export const DB = new Database();
