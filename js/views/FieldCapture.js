@@ -5,6 +5,7 @@ import { Toast } from '../components/Toast.js';
 import { Icons } from '../components/Icons.js';
 import { ReportsService } from '../services/reports.js';
 import { ActivitiesService } from '../services/activities.js';
+import { Speech } from '../services/speech.js';
 import { AppRouter } from '../router.js';
 import { State } from '../state.js';
 import { DB } from '../db.js';
@@ -71,69 +72,59 @@ export async function FieldCaptureView() {
   voiceBox.appendChild(voiceStatusText);
   inputCard.appendChild(voiceBox);
 
-  // Speech Recognition Setup (Graceful Fallback)
-  let recognition = null;
+  // Speech Recognition Setup — SpeechService fallback chain
+  // (native Web Speech API -> server ASR when live -> typed input)
   let isRecording = false;
 
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (SpeechRecognition) {
-    recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-IN'; // Indian English context for Oil India
+  const setMicIdle = (message) => {
+    isRecording = false;
+    micBtn.classList.remove('active-mic');
+    voiceBox.classList.remove('recording');
+    if (message) voiceStatusText.textContent = message;
+  };
 
-    recognition.onresult = (event) => {
-      let currentTranscript = '';
-      for (let i = 0; i < event.results.length; i++) {
-        currentTranscript += event.results[i][0].transcript + ' ';
-      }
-      transcriptInput.value = currentTranscript.trim();
-    };
-
-    recognition.onerror = (event) => {
-      console.warn('Speech recognition error:', event.error);
-      isRecording = false;
-      micBtn.classList.remove('active-mic');
-      voiceBox.classList.remove('recording');
-      voiceStatusText.textContent = `Speech recognition error: ${event.error}. You can type directly below.`;
-    };
-
-    recognition.onend = () => {
-      isRecording = false;
-      micBtn.classList.remove('active-mic');
-      voiceBox.classList.remove('recording');
-      voiceStatusText.textContent = 'Recording finished. Review transcript below.';
+  const startSpeechHandlers = {
+    onInterim: (text) => {
+      transcriptInput.value = text.trim();
+    },
+    onResult: (finalText) => {
+      transcriptInput.value = `${transcriptInput.value} ${finalText}`.trim();
+    },
+    onError: (message) => {
+      console.warn('Speech recognition error:', message);
+      setMicIdle(`Speech recognition error: ${message}. You can type directly below.`);
+    },
+    onEnd: () => {
+      setMicIdle('Recording finished. Review transcript below.');
       if (transcriptInput.value.trim().length > 10) {
         handleProcessInput();
       }
-    };
-  } else {
-    voiceStatusText.innerHTML = '<span class="text-muted">Web Speech API not supported on this browser. Type your report below.</span>';
+    }
+  };
+
+  const caps = Speech.getCapabilities();
+  if (!caps.nativeSTT && !caps.serverASR) {
+    voiceStatusText.innerHTML = '<span class="text-muted">Voice recognition not supported on this browser. Type your report below.</span>';
   }
 
-  micBtn.addEventListener('click', () => {
-    if (!recognition) {
-      Toast.info('Voice recognition not available. Please type into the transcript box.');
-      transcriptInput.focus();
-      return;
-    }
-
+  micBtn.addEventListener('click', async () => {
     if (!isRecording) {
-      try {
-        recognition.start();
-        isRecording = true;
-        micBtn.classList.add('active-mic');
-        voiceBox.classList.add('recording');
-        voiceStatusText.textContent = 'Listening... Speak clearly (e.g., "Foundation B2 concreting completed today...")';
-      } catch (err) {
-        console.warn('Recognition start error:', err);
+      const mode = Speech.startListening(startSpeechHandlers);
+      if (mode === 'unsupported') {
+        Toast.info('Voice recognition not available. Please type into the transcript box.');
+        transcriptInput.focus();
+        return;
       }
+      isRecording = true;
+      micBtn.classList.add('active-mic');
+      voiceBox.classList.add('recording');
+      voiceStatusText.textContent = mode === 'server'
+        ? 'Recording audio for server transcription...'
+        : 'Listening... Speak clearly (e.g., "Foundation B2 concreting completed today...")';
     } else {
-      recognition.stop();
-      isRecording = false;
-      micBtn.classList.remove('active-mic');
-      voiceBox.classList.remove('recording');
       voiceStatusText.textContent = 'Processing speech...';
+      Speech.stopListening();
+      setMicIdle();
     }
   });
 

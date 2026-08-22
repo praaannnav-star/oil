@@ -1,5 +1,6 @@
 import { ProjectsService } from '../services/projects.js';
 import { AnalyticsService } from '../services/analytics.js';
+import { ReportsService } from '../services/reports.js';
 import { MetricCard, Card } from '../components/Card.js';
 import { Badge } from '../components/Badge.js';
 import { Button } from '../components/Button.js';
@@ -99,33 +100,28 @@ export async function OverviewView() {
       </div>
       <span class="badge badge-in-progress">DAILY OPERATIONAL INTELLIGENCE</span>
     </div>
-    <div class="d-grid grid-3 gap-3 mt-1">
-      <div class="card p-3 gap-1" style="background:var(--color-surface-el);">
-        <div class="text-xs font-bold text-success font-mono">✓ 7 ACTIVITIES UPDATED</div>
-        <div class="text-xs text-secondary">Verified progress captured from Site Supervisors in Civil & Piping</div>
-      </div>
-      <div class="card p-3 gap-1" style="background:var(--color-surface-el);">
-        <div class="text-xs font-bold text-info font-mono">📸 4 EVIDENCE PACKETS APPROVED</div>
-        <div class="text-xs text-secondary">Concrete cube break tests and weld radiographic examination passes</div>
-      </div>
-      <div class="card p-3 gap-1" style="background:var(--color-surface-el);">
-        <div class="text-xs font-bold text-danger font-mono">⚠ 2 ACTIVITIES BECAME DELAYED</div>
-        <div class="text-xs text-secondary">Foundation B2 (+2d) & Junction Box JB-102 cable pulling gland shortage</div>
-      </div>
-      <div class="card p-3 gap-1" style="background:var(--color-surface-el);">
-        <div class="text-xs font-bold text-warning font-mono">⏳ 1 MILESTONE SLIPPED</div>
-        <div class="text-xs text-secondary">Milestone MS-3 (Compressor Deck Handover) target moved 3 days</div>
-      </div>
-      <div class="card p-3 gap-1" style="background:var(--color-surface-el);">
-        <div class="text-xs font-bold text-success font-mono">🔧 1 DEVIATION RESOLVED</div>
-        <div class="text-xs text-secondary">Accelerated thermal curing compound approved to prevent further delay</div>
-      </div>
-      <div class="card p-3 gap-1" style="background:var(--color-surface-el);">
-        <div class="text-xs font-bold text-danger font-mono">🛑 1 BLOCKER REPORTED</div>
-        <div class="text-xs text-secondary">Heavy monsoon rainfall alert logged in Sector 4 drainage trench</div>
-      </div>
-    </div>
   `;
+
+  // Derived from real field data — no hardcoded intelligence blocks
+  const digestSignals = await ReportsService.summarizeDailyDigest('PRJ-OIL-2026-01');
+  const toneClass = { success: 'text-success', info: 'text-info', danger: 'text-danger', warning: 'text-warning' };
+  const digestGrid = document.createElement('div');
+  digestGrid.className = 'd-grid grid-3 gap-3 mt-1';
+  digestSignals.forEach(signal => {
+    const cell = document.createElement('div');
+    cell.className = 'card p-3 gap-1';
+    cell.style.background = 'var(--color-surface-el)';
+    const h = document.createElement('div');
+    h.className = `text-xs font-bold font-mono ${toneClass[signal.tone] || 'text-secondary'}`;
+    h.textContent = signal.headline;
+    const d = document.createElement('div');
+    d.className = 'text-xs text-secondary';
+    d.textContent = signal.detail;
+    cell.appendChild(h);
+    cell.appendChild(d);
+    digestGrid.appendChild(cell);
+  });
+  intelligenceCard.appendChild(digestGrid);
   container.appendChild(intelligenceCard);
 
   // Projects Portfolio Table

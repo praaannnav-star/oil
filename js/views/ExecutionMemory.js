@@ -1,4 +1,5 @@
 import { AnalyticsService } from '../services/analytics.js';
+import { ReportsService } from '../services/reports.js';
 import { Card } from '../components/Card.js';
 import { Table } from '../components/Table.js';
 import { Badge } from '../components/Badge.js';
@@ -51,6 +52,45 @@ export async function ExecutionMemoryView() {
     </div>
   `;
   container.appendChild(insightCard);
+
+  // Live Delay Signals — classified from actual field reports via
+  // classifyDelayCause (rules engine today, Workers AI when live).
+  const allReports = await ReportsService.getReports();
+  const blockerReports = allReports.filter(r => r.extractedEvent?.blocker && r.extractedEvent.blocker !== 'None');
+  if (blockerReports.length > 0) {
+    const causeCounts = new Map();
+    for (const report of blockerReports) {
+      const cause = await ReportsService.classifyDelayCause(report.extractedEvent.blocker);
+      if (!causeCounts.has(cause.code)) {
+        causeCounts.set(cause.code, { label: cause.label, count: 0 });
+      }
+      causeCounts.get(cause.code).count++;
+    }
+    const liveCauses = [...causeCounts.values()].sort((a, b) => b.count - a.count);
+
+    const liveCard = document.createElement('div');
+    liveCard.className = 'card p-4 gap-3';
+    liveCard.innerHTML = `
+      <div class="card-header p-0 mb-1">
+        <h3 class="card-title">Live Delay Signals — Current Field Reports</h3>
+        <span class="text-xs text-muted">Auto-classified from ${blockerReports.length} blocker observation(s)</span>
+      </div>
+    `;
+    const liveGrid = document.createElement('div');
+    liveGrid.className = 'd-grid grid-3 gap-2 text-sm mt-1';
+    liveCauses.forEach(c => {
+      const cell = document.createElement('div');
+      cell.className = 'card p-3 gap-1';
+      cell.style.background = 'var(--color-surface-el)';
+      cell.innerHTML = `
+        <strong class="text-xs text-danger uppercase font-mono">${c.count} Event${c.count > 1 ? 's' : ''}</strong>
+        <p class="text-xs text-secondary">${c.label}</p>
+      `;
+      liveGrid.appendChild(cell);
+    });
+    liveCard.appendChild(liveGrid);
+    container.appendChild(liveCard);
+  }
 
   // Section 1: Recurring Delay Causes Table
   const delayCard = document.createElement('div');

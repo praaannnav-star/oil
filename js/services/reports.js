@@ -235,5 +235,102 @@ export const ReportsService = {
     }
 
     return newReport;
+  },
+
+  // Normalize free blocker text into a cause enum. Rules-based today; swaps
+  // to POST /api/delay-cause (Workers AI) when the live endpoint lands.
+  async classifyDelayCause(text) {
+    const lower = (text || '').toLowerCase();
+    const rules = [
+      { code: 'WEATHER', label: 'Weather / Rainfall Interruption', keys: ['rain', 'monsoon', 'weather', 'storm', 'flood'] },
+      { code: 'MATERIAL_SHORTAGE', label: 'Material / Parts Shortage', keys: ['shortage', 'material', 'stock', 'supply', 'gland', 'cement'] },
+      { code: 'EQUIPMENT_BREAKDOWN', label: 'Equipment Breakdown', keys: ['breakdown', 'machine', 'crane', 'rig', 'compressor failure', 'equipment'] },
+      { code: 'LABOUR_SHORTAGE', label: 'Manpower / Labour Shortage', keys: ['labour', 'labor', 'manpower', 'workers', 'crew absent'] },
+      { code: 'PERMIT_CLEARANCE', label: 'Permit / Clearance Pending', keys: ['permit', 'clearance', 'approval pending', 'statutory'] },
+      { code: 'TECHNICAL', label: 'Technical / Quality Issue', keys: ['rework', 'cube test', 'fail', 'defect', 'rectification'] }
+    ];
+    for (const rule of rules) {
+      if (rule.keys.some(k => lower.includes(k))) {
+        return { code: rule.code, label: rule.label };
+      }
+    }
+    if (lower.includes('delay') || lower.includes('halt') || lower.includes('stopped')) {
+      return { code: 'OTHER', label: 'Other Site Constraint' };
+    }
+    return { code: 'NONE', label: 'No Blocker Detected' };
+  },
+
+  // Daily operational digest derived from REAL data ("What changed since
+  // yesterday?"). Rules-based now; becomes POST /api/summarize when live.
+  async summarizeDailyDigest(projectId = null) {
+    await API.delay(200);
+    const reports = projectId ? API.reports.filter(r => r.projectId === projectId) : API.reports;
+    const activities = projectId ? API.activities.filter(a => a.projectId === projectId) : API.activities;
+    const evidence = API.evidence.filter(e => !projectId || e.projectId === projectId);
+    const reviewItems = API.reviewItems;
+    const today = new Date().toISOString().split('T')[0];
+    const signals = [];
+
+    const updatedActivities = activities.filter(a =>
+      a.actualStart === today || a.actualFinish === today ||
+      reports.some(r => r.matchedActivityId === a.id && r.extractedEvent?.date === today)
+    );
+    if (updatedActivities.length > 0) {
+      signals.push({
+        tone: 'success',
+        headline: `${updatedActivities.length} ACTIVITIES UPDATED`,
+        detail: `Verified field progress recorded on ${[...new Set(updatedActivities.map(a => a.discipline))].join(' & ') || 'multiple disciplines'}`
+      });
+    }
+
+    const approvedEvidence = evidence.filter(e => e.status !== 'pending');
+    if (approvedEvidence.length > 0) {
+      signals.push({
+        tone: 'info',
+        headline: `${approvedEvidence.length} EVIDENCE PACKETS VERIFIED`,
+        detail: 'Photo documentation linked to schedule activities passed inspection'
+      });
+    }
+
+    const delayed = activities.filter(a => a.status === 'delayed');
+    for (const act of delayed.slice(0, 2)) {
+      const blockerReport = reports.find(r => r.matchedActivityId === act.id && r.extractedEvent?.blocker && r.extractedEvent.blocker !== 'None');
+      const cause = await this.classifyDelayCause(blockerReport?.extractedEvent?.blocker || '');
+      signals.push({
+        tone: 'danger',
+        headline: `⚠ ${act.code} DELAYED`,
+        detail: cause.code === 'NONE'
+          ? `${act.name} flagged delayed — awaiting blocker classification from site`
+          : `${act.name}: ${cause.label}`
+      });
+    }
+
+    const openBlockers = reports.filter(r => r.extractedEvent?.blocker && r.extractedEvent.blocker !== 'None');
+    if (openBlockers.length > 0) {
+      const latest = openBlockers[0];
+      signals.push({
+        tone: 'danger',
+        headline: `${openBlockers.length} BLOCKER REPORT${openBlockers.length > 1 ? 'S' : ''}`,
+        detail: `"${latest.rawTranscript.slice(0, 80)}${latest.rawTranscript.length > 80 ? '...' : ''}" — ${latest.author}`
+      });
+    }
+
+    const pendingReview = reviewItems.filter(i => i.state === 'needs-review').length;
+    if (pendingReview > 0) {
+      signals.push({
+        tone: 'warning',
+        headline: `${pendingReview} ITEM${pendingReview > 1 ? 'S' : ''} AWAITING PLANNER REVIEW`,
+        detail: 'Field submissions queued for schedule-linking validation'
+      });
+    }
+
+    if (signals.length === 0) {
+      signals.push({
+        tone: 'info',
+        headline: 'NO FIELD MOVEMENT TODAY',
+        detail: 'No verified observations recorded yet — submit a field report from the PWA to populate this digest.'
+      });
+    }
+    return signals.slice(0, 6);
   }
 };
