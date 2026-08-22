@@ -83,6 +83,38 @@ export async function ProjectDetailView(params = {}) {
 
   container.appendChild(kpiGrid);
 
+  // Site Location Map — Phase A: static OpenStreetMap embed (no Leaflet).
+  // Requires coordinates set via the project form; degrades gracefully offline.
+  if (project.lat && project.lng) {
+    const { lat, lng } = project;
+    const d = 0.035; // ~7km bbox span
+    const mapCard = document.createElement('div');
+    mapCard.className = 'card p-4 gap-3';
+    mapCard.innerHTML = `
+      <div class="card-header p-0 mb-1">
+        <h3 class="card-title">Site Location</h3>
+        <span class="text-xs text-muted font-mono">${lat}, ${lng} • OpenStreetMap</span>
+      </div>
+      <iframe
+        title="Project site location map"
+        class="map-embed"
+        src="https://www.openstreetmap.org/export/embed.html?bbox=${lng - d},${lat - d},${+lng + d},${+lat + d}&layer=mapnik&marker=${lat},${lng}"
+        loading="lazy"
+      ></iframe>
+    `;
+    container.appendChild(mapCard);
+  } else {
+    const noMap = document.createElement('div');
+    noMap.className = 'card p-4 gap-2';
+    noMap.innerHTML = `
+      <div class="card-header p-0">
+        <h3 class="card-title">Site Location</h3>
+      </div>
+      <p class="text-xs text-muted">No coordinates set. Add latitude/longitude in Edit Project to show the site pin on an OpenStreetMap embed.</p>
+    `;
+    container.appendChild(noMap);
+  }
+
   // Discipline Progress Breakdown & Delayed Activities Split View
   const splitGrid = document.createElement('div');
   splitGrid.className = 'd-grid grid-2 gap-4';

@@ -1051,6 +1051,9 @@
 .health-ring::after { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: var(--color-surface-el); z-index: 0; }
 .health-ring span { position: relative; z-index: 1; }
 .chip-row { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+/* OSM map embed (P8 Phase A) */
+.map-embed { width: 100%; height: 320px; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; background: #1a2332; }
 .landing-workflow { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin-top: 7rem; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.1); }
 .landing-workflow article { background: rgba(9, 15, 24, .88); padding: 2rem; }
 .landing-workflow span { color: #F59E0B; font-weight: 800; font-size: .8rem; }
