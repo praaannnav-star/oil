@@ -63,8 +63,13 @@ export const ReportsService = {
       discipline,
       activity: transcript ? transcript.slice(0, 70) + (transcript.length > 70 ? '...' : '') : 'Site Activity',
       assetTag,
-      startTime: '08:30 IST',
-      endTime: '17:15 IST',
+      // Truthful capture time — the moment of extraction, not a fabricated
+      // shift window. Field crews rarely narrate exact start/finish clock times.
+      capturedAt: new Date().toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit'
+      }) + ' IST',
       status,
       blocker,
       date: new Date().toISOString().split('T')[0]
@@ -113,8 +118,21 @@ export const ReportsService = {
           signals.push({ label: 'Terminology semantic alignment ("pour", "concrete")', match: true });
         }
 
-        // Schedule window active
-        signals.push({ label: 'Schedule window active and expecting progress', match: true });
+        // Schedule window validation — only claim an active window when the
+        // report date genuinely falls inside the activity's planned dates.
+        const today = new Date().toISOString().split('T')[0];
+        const hasWindow = act.plannedStart && act.plannedFinish;
+        if (hasWindow && today >= act.plannedStart && today <= act.plannedFinish) {
+          score += 10;
+          signals.push({ label: `Schedule window active (${act.plannedStart} → ${act.plannedFinish})`, match: true });
+        } else {
+          signals.push({
+            label: hasWindow
+              ? `Outside planned window (${act.plannedStart} → ${act.plannedFinish})`
+              : 'No planned schedule window defined for this activity',
+            match: false
+          });
+        }
 
         const confidence = Math.min(98, Math.max(25, score));
         return {

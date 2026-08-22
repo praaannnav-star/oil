@@ -1,8 +1,36 @@
 import { API } from './api.js';
 import { ActivitiesService } from './activities.js';
 import { AuditService } from './audit.js';
+import { Auth, USER_ROLES } from './auth.js';
+
+const REVIEW_ALLOWED_ROLES = [
+  USER_ROLES.ADMIN,
+  USER_ROLES.PROJECT_MANAGER,
+  USER_ROLES.PLANNER,
+  USER_ROLES.REVIEWER
+];
 
 export const ReviewService = {
+  // Review actions are bound to the signed-in session — no anonymous or
+  // hardcoded reviewer attribution is permitted.
+  _resolveReviewer(explicitReviewer, action) {
+    if (explicitReviewer) {
+      return { name: explicitReviewer, label: explicitReviewer, role: 'Lead Planner' };
+    }
+    const user = Auth.getUser();
+    if (!user) {
+      throw new Error('You must be signed in to review items.');
+    }
+    if (!REVIEW_ALLOWED_ROLES.includes(user.role)) {
+      throw new Error(`Role "${user.role}" is not permitted to ${action} matches.`);
+    }
+    return {
+      name: user.name,
+      label: `${user.name} — ${user.title}`,
+      role: user.role
+    };
+  },
+
   async getReviewQueue(tabCategory = 'all') {
     await API.delay();
     if (tabCategory && tabCategory !== 'all') {
@@ -16,13 +44,14 @@ export const ReviewService = {
     return API.reviewItems.find(i => i.id === id) || null;
   },
 
-  async approveMatch(reviewId, reviewer = 'Rajesh Baruah, AGM (Projects)') {
+  async approveMatch(reviewId, reviewer = null) {
     await API.delay();
+    const actor = this._resolveReviewer(reviewer, 'approve');
     const item = API.reviewItems.find(i => i.id === reviewId);
     if (!item) return null;
 
     item.state = 'approved';
-    item.reviewer = reviewer;
+    item.reviewer = actor.label;
     item.reviewedAt = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST';
     item.tabCategory = 'approved';
 
@@ -39,9 +68,9 @@ export const ReviewService = {
       // Append Audit Log
       await AuditService.appendAudit({
         activityId: item.topMatch.id,
-        action: 'Planner Approved Activity Match',
-        actor: reviewer,
-        role: 'Lead Planner',
+        action: 'Activity Match Approved',
+        actor: actor.name,
+        role: actor.role,
         detail: `Confirmed link to ${item.topMatch.code} (${item.topMatch.name}). Schedule actuals updated.`
       });
     }
@@ -50,23 +79,24 @@ export const ReviewService = {
     return item;
   },
 
-  async rejectMatch(reviewId, reason = 'Incorrect activity match', reviewer = 'Rajesh Baruah') {
+  async rejectMatch(reviewId, reason = 'Incorrect activity match', reviewer = null) {
     await API.delay();
+    const actor = this._resolveReviewer(reviewer, 'reject');
     const item = API.reviewItems.find(i => i.id === reviewId);
     if (!item) return null;
 
     item.state = 'rejected';
     item.tabCategory = 'rejected';
-    item.reviewer = reviewer;
+    item.reviewer = actor.label;
     item.reviewedAt = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST';
     item.rejectionReason = reason;
 
     if (item.topMatch) {
       await AuditService.appendAudit({
         activityId: item.topMatch.id,
-        action: 'Match Rejected by Planner',
-        actor: reviewer,
-        role: 'Lead Planner',
+        action: 'Activity Match Rejected',
+        actor: actor.name,
+        role: actor.role,
         detail: `Reason: ${reason}`
       });
     }

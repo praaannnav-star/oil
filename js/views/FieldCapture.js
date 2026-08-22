@@ -250,8 +250,8 @@ export async function FieldCaptureView() {
         </select>
       </div>
       <div class="d-flex flex-col gap-1">
-        <label class="text-xs font-bold text-muted">START TIME → FINISH TIME</label>
-        <input type="text" id="extract-time" value="${escapeHtml(currentExtractedEvent.startTime)} - ${escapeHtml(currentExtractedEvent.endTime)}" class="w-full">
+        <label class="text-xs font-bold text-muted">CAPTURED AT</label>
+        <input type="text" id="extract-time" value="${escapeHtml(currentExtractedEvent.capturedAt || 'Just now')}" class="w-full">
       </div>
       <div class="d-flex flex-col gap-1">
         <label class="text-xs font-bold text-muted">IDENTIFIED BLOCKER</label>

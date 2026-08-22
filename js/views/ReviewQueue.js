@@ -219,10 +219,14 @@ export async function ReviewQueueView() {
         variant: 'success',
         icon: Icons.check(),
         onClick: async () => {
-          await ReviewService.approveMatch(item.id);
-          Toast.success('Activity match approved! Schedule baseline actuals reconciled.');
-          drawer.close();
-          renderTable();
+          try {
+            await ReviewService.approveMatch(item.id);
+            Toast.success('Activity match approved! Schedule baseline actuals reconciled.');
+            drawer.close();
+            renderTable();
+          } catch (err) {
+            Toast.danger(err.message || 'Approval failed.');
+          }
         }
       });
       footerButtons.push(approveBtn);
@@ -232,10 +236,14 @@ export async function ReviewQueueView() {
         variant: 'danger',
         icon: Icons.x(),
         onClick: async () => {
-          await ReviewService.rejectMatch(item.id, 'Discrepancy identified during planner inspection');
-          Toast.warning('Activity match rejected.');
-          drawer.close();
-          renderTable();
+          try {
+            await ReviewService.rejectMatch(item.id, 'Discrepancy identified during planner inspection');
+            Toast.warning('Activity match rejected.');
+            drawer.close();
+            renderTable();
+          } catch (err) {
+            Toast.danger(err.message || 'Rejection failed.');
+          }
         }
       });
       footerButtons.push(rejectBtn);
