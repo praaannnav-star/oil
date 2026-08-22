@@ -9,14 +9,15 @@ import { MOCK_EVIDENCE } from '../data/mock-evidence.js';
 import { MOCK_REVIEW_ITEMS } from '../data/mock-review.js';
 import { MOCK_AUDIT_LOG } from '../data/mock-audit.js';
 
-const COLLECTIONS = ['projects', 'activities', 'reports', 'evidence', 'reviewItems', 'auditLogs'];
+const COLLECTIONS = ['projects', 'activities', 'reports', 'evidence', 'reviewItems', 'auditLogs', 'surveys'];
 const SEEDS = {
   projects: MOCK_PROJECTS,
   activities: MOCK_ACTIVITIES,
   reports: MOCK_REPORTS,
   evidence: MOCK_EVIDENCE,
   reviewItems: MOCK_REVIEW_ITEMS,
-  auditLogs: MOCK_AUDIT_LOG
+  auditLogs: MOCK_AUDIT_LOG,
+  surveys: []
 };
 const PERSIST_DEBOUNCE_MS = 200;
 
@@ -32,6 +33,7 @@ class ApiService {
     this.evidence = JSON.parse(JSON.stringify(MOCK_EVIDENCE));
     this.reviewItems = JSON.parse(JSON.stringify(MOCK_REVIEW_ITEMS));
     this.auditLogs = JSON.parse(JSON.stringify(MOCK_AUDIT_LOG));
+    this.surveys = [];
 
     this._hydrated = false;
     this._initPromise = null;

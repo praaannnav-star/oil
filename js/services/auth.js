@@ -19,7 +19,7 @@ export const DEMO_ACCOUNTS = [
     department: 'Projects Delivery Division',
     avatar: '👷',
     badgeClass: 'badge-in-progress',
-    allowedRoutes: ['/overview', '/manager', '/projects', '/projects/new', '/projects/:id', '/projects/:id/edit', '/schedule', '/activities/:id', '/review', '/evidence', '/analytics', '/memory', '/audit']
+    allowedRoutes: ['/overview', '/manager', '/projects', '/projects/new', '/projects/:id', '/projects/:id/edit', '/schedule', '/activities/:id', '/review', '/surveys', '/evidence', '/analytics', '/memory', '/audit']
   },
   {
     id: 'USR-ADMIN-01',
@@ -31,7 +31,7 @@ export const DEMO_ACCOUNTS = [
     department: 'Corporate IT & Operations Control',
     avatar: '👨‍💼',
     badgeClass: 'badge-rejected',
-    allowedRoutes: ['/overview', '/projects', '/projects/:id', '/schedule', '/activities/:id', '/progress', '/progress/new', '/review', '/evidence', '/analytics', '/memory', '/audit']
+    allowedRoutes: ['/overview', '/projects', '/projects/:id', '/schedule', '/activities/:id', '/progress', '/progress/new', '/review', '/surveys', '/evidence', '/analytics', '/memory', '/audit']
   },
   {
     id: 'USR-EXEC-01',
@@ -55,7 +55,7 @@ export const DEMO_ACCOUNTS = [
     department: 'Planning & Project Controls Division',
     avatar: '📐',
     badgeClass: 'badge-in-progress',
-    allowedRoutes: ['/overview', '/projects', '/projects/:id', '/schedule', '/activities/:id', '/review', '/evidence', '/analytics', '/memory', '/audit']
+    allowedRoutes: ['/overview', '/projects', '/projects/:id', '/schedule', '/activities/:id', '/review', '/surveys', '/evidence', '/analytics', '/memory', '/audit']
   },
   {
     id: 'USR-REV-01',
@@ -67,7 +67,7 @@ export const DEMO_ACCOUNTS = [
     department: 'Quality Assurance & Inspection Bureau',
     avatar: '🔍',
     badgeClass: 'badge-at-risk',
-    allowedRoutes: ['/overview', '/schedule', '/activities/:id', '/review', '/evidence', '/audit']
+    allowedRoutes: ['/overview', '/schedule', '/activities/:id', '/review', '/surveys', '/evidence', '/audit']
   },
   {
     id: 'USR-FIELD-01',
@@ -79,7 +79,7 @@ export const DEMO_ACCOUNTS = [
     department: 'Field Operations & Construction — Rig 04',
     avatar: '👷‍♂️',
     badgeClass: 'badge-on-track',
-    allowedRoutes: ['/overview', '/progress', '/progress/new', '/evidence', '/activities/:id']
+    allowedRoutes: ['/overview', '/progress', '/progress/new', '/surveys', '/evidence', '/activities/:id']
   }
 ];
 

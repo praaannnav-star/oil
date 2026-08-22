@@ -18,6 +18,7 @@ import { ProjectDetailView } from './views/ProjectDetail.js';
 import { ScheduleExplorerView } from './views/ScheduleExplorer.js';
 import { ActivityDetailView } from './views/ActivityDetail.js';
 import { FieldCaptureView } from './views/FieldCapture.js';
+import { SurveyWizardView } from './views/SurveyWizard.js';
 import { ReviewQueueView } from './views/ReviewQueue.js';
 import { EvidenceView } from './views/Evidence.js';
 import { AnalyticsView } from './views/Analytics.js';
@@ -53,6 +54,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   AppRouter.register('/activities/:id', ActivityDetailView);
   AppRouter.register('/progress', FieldCaptureView);
   AppRouter.register('/progress/new', FieldCaptureView);
+  AppRouter.register('/surveys', SurveyWizardView);
   AppRouter.register('/review', ReviewQueueView);
   AppRouter.register('/evidence', EvidenceView);
   AppRouter.register('/analytics', AnalyticsView);

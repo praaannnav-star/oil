@@ -39,6 +39,30 @@ class SyncManager {
     let successCount = 0;
     for (const report of pending) {
       try {
+        if (report.type === 'survey') {
+          // Offline survey promotion
+          API.surveys.unshift({ ...report, status: 'submitted', syncedAt: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST' });
+          API.reviewItems.unshift({
+            id: `REV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            reportId: report.id,
+            source: `Survey (Offline Synced) — ${report.templateName || 'Field Survey'}`,
+            reporter: report.submittedBy,
+            discipline: 'HSE / Progress',
+            extractedEvent: { activity: report.templateName || 'Survey submission', status: 'Submitted', blocker: 'None' },
+            topMatch: null,
+            alternatives: [],
+            surveyAnswers: report.answers || {},
+            state: 'needs-review',
+            tabCategory: 'needs-review',
+            reviewer: null,
+            reviewedAt: null,
+            age: 'Just now'
+          });
+          await DB.removePendingReport(report.id);
+          successCount++;
+          continue;
+        }
+
         // Promote queued photos into first-class linked evidence records
         const evidenceIds = [];
         for (const ev of (report.evidenceItems || [])) {
@@ -94,6 +118,7 @@ class SyncManager {
     API.persist('reports', true);
     API.persist('reviewItems', true);
     API.persist('evidence', true);
+    API.persist('surveys', true);
     await this.updatePendingCount();
 
     if (successCount > 0) {

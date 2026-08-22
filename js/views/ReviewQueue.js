@@ -192,6 +192,24 @@ export async function ReviewQueueView() {
       drawerContent.appendChild(unmatchedBox);
     }
 
+    // Section 2b: Survey Answers (first-class survey submissions)
+    if (item.surveyAnswers && Object.keys(item.surveyAnswers).length > 0) {
+      const srvBox = document.createElement('div');
+      srvBox.className = 'card p-3 gap-2';
+      srvBox.innerHTML = `<div class="text-xs font-bold text-muted">SURVEY RESPONSES</div>`;
+      Object.entries(item.surveyAnswers).forEach(([qId, ans]) => {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'd-flex justify-between text-xs gap-3';
+        const qLabel = qId.replace(/^q_/, '').replace(/_/g, ' ');
+        rowEl.innerHTML = `
+          <span class="text-muted" style="text-transform:capitalize;">${escapeHtml(qLabel)}</span>
+          <strong class="text-primary text-right">${escapeHtml(String(ans || '—'))}</strong>
+        `;
+        srvBox.appendChild(rowEl);
+      });
+      drawerContent.appendChild(srvBox);
+    }
+
     // Section 3: Evidence Preview (activity-linked + report-linked, deduped)
     const [activityEvidence, allEvidence] = await Promise.all([
       EvidenceService.getEvidence(item.topMatch?.id),
