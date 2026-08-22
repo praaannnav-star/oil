@@ -41,5 +41,56 @@ export const ActivitiesService = {
       return API.activities[index];
     }
     return null;
+  },
+
+  // Reconcile schedule actuals from a reviewed field event. All values are
+  // derived from real dates — no invented shift windows or fixed percentages.
+  async reconcileFromEvent(activityId, event) {
+    const index = API.activities.findIndex(a => a.id === activityId);
+    if (index === -1) return null;
+    const act = { ...API.activities[index] };
+
+    const DAY_MS = 86400000;
+    const reportedStatus = (event?.status || '').toLowerCase();
+    // The verified observation date anchors all reconciliation math.
+    const reportDate = event?.date || new Date().toISOString().split('T')[0];
+
+    // 1) Actual start: the first evidence-backed observation on this activity
+    if (!act.actualStart) {
+      act.actualStart = reportDate;
+    }
+
+    if (reportedStatus.includes('completed')) {
+      // Verified completion: full progress with a dated finish
+      act.progress = 100;
+      act.status = 'completed';
+      act.actualFinish = reportDate;
+    } else {
+      // Time-phased earned progress: share of the baseline window elapsed,
+      // floored at previously reported progress (observations never regress).
+      if (act.plannedStart && act.plannedFinish) {
+        const windowMs = new Date(act.plannedFinish) - new Date(act.plannedStart);
+        if (windowMs > 0) {
+          const elapsedMs = new Date(reportDate) - new Date(act.plannedStart);
+          const implied = Math.round(Math.min(95, Math.max(0, (elapsedMs / windowMs) * 100)));
+          act.progress = reportedStatus.includes('delay')
+            ? act.progress // blocked work: hold reported progress, flag status only
+            : Math.min(95, Math.max(act.progress, implied));
+        }
+      }
+      act.status = reportedStatus.includes('delay') || reportedStatus.includes('halt') || reportedStatus.includes('breakdown')
+        ? 'delayed'
+        : 'in-progress';
+    }
+
+    // 2) Finish variance from real dates only (early finish => positive days)
+    if (act.status === 'completed' && act.actualFinish && act.plannedFinish) {
+      act.variance = Math.round(((new Date(act.plannedFinish) - new Date(act.actualFinish)) / DAY_MS) * 10) / 10;
+    }
+
+    act.reviewState = 'approved';
+    API.activities[index] = act;
+    API.persist('activities');
+    return act;
   }
 };

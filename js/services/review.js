@@ -57,13 +57,7 @@ export const ReviewService = {
 
     // Update the corresponding activity actuals if match exists
     if (item.topMatch) {
-      const isCompleted = item.extractedEvent?.status?.toLowerCase().includes('completed');
-      await ActivitiesService.updateActivity(item.topMatch.id, {
-        progress: isCompleted ? 100 : 75,
-        status: isCompleted ? 'completed' : 'in-progress',
-        actualFinish: isCompleted ? item.extractedEvent.date : null,
-        reviewState: 'approved'
-      });
+      await ActivitiesService.reconcileFromEvent(item.topMatch.id, item.extractedEvent);
 
       // Append Audit Log
       await AuditService.appendAudit({
