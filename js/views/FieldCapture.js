@@ -309,20 +309,27 @@ export async function FieldCaptureView() {
 
     photoInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
-      if (file) {
-        const fakeUrl = URL.createObjectURL(file);
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        Toast.warning('Photo exceeds the 2MB field limit. Please retake or compress.');
+        return;
+      }
+      // Read as a data URL so the image survives refresh and offline queuing
+      const reader = new FileReader();
+      reader.onload = () => {
         attachedEvidence.push({
-          id: `EVD-NEW-${Date.now()}`,
+          localId: `EVD-NEW-${Date.now()}`,
           filename: file.name,
-          url: fakeUrl,
+          url: reader.result,
           type: file.type,
           uploadedBy: State.getState().currentUser.name,
-          createdAt: 'Just now',
           locationMeta: 'Zone East - Pad 14 (GPS Locked)'
         });
         renderAttachedThumbnails();
         Toast.success('Photo evidence attached.');
-      }
+      };
+      reader.onerror = () => Toast.danger('Could not read the selected image.');
+      reader.readAsDataURL(file);
     });
 
     const addPhotoBtn = Button({
@@ -406,13 +413,14 @@ export async function FieldCaptureView() {
             assetTag: document.getElementById('extract-tag')?.value || currentExtractedEvent.assetTag,
             status: document.getElementById('extract-status')?.value || currentExtractedEvent.status,
             blocker: document.getElementById('extract-blocker')?.value || currentExtractedEvent.blocker,
+            capturedAt: currentExtractedEvent.capturedAt,
             date: new Date().toISOString().split('T')[0]
           },
           matchedActivity: currentMatch.recommended,
           confidence: currentMatch.confidence,
           signals: currentMatch.signals,
           alternatives: currentMatch.alternatives,
-          evidenceIds: attachedEvidence.map(e => e.id),
+          evidenceItems: attachedEvidence.map(({ localId, ...rest }) => rest),
           isOffline: !navigator.onLine
         };
 

@@ -1,6 +1,7 @@
 import { API } from './api.js';
 import { DB } from '../db.js';
 import { AuditService } from './audit.js';
+import { EvidenceService } from './evidence.js';
 
 export const ReportsService = {
   async getReports(projectId = null) {
@@ -171,14 +172,34 @@ export const ReportsService = {
       status: reportData.isOffline ? 'pending-sync' : 'pending-review',
       reviewer: null,
       reviewedAt: null,
-      evidenceIds: reportData.evidenceIds || []
+      evidenceItems: reportData.evidenceItems || [],
+      evidenceIds: []
     };
 
     if (reportData.isOffline) {
+      // Photos ride along inside the queued report and are promoted to real
+      // evidence records when SyncManager processes the item.
       await DB.addPendingReport(newReport);
     } else {
       API.reports.unshift(newReport);
       API.persist('reports');
+
+      // Persist attached photos as first-class evidence records linked to
+      // both the report and the matched schedule activity.
+      const evidenceIds = [];
+      for (const ev of (reportData.evidenceItems || [])) {
+        const saved = await EvidenceService.addEvidence({
+          ...ev,
+          reportId: newReport.id,
+          activityId: newReport.matchedActivityId || null,
+          projectId: newReport.projectId
+        });
+        evidenceIds.push(saved.id);
+      }
+      if (evidenceIds.length > 0) {
+        newReport.evidenceIds = evidenceIds;
+        API.persist('reports');
+      }
 
       // Also create a review item
       const reviewItem = {

@@ -1,6 +1,7 @@
 // Background Sync Manager for Offline Field Reports
 import { DB } from './db.js';
 import { API } from './services/api.js';
+import { EvidenceService } from './services/evidence.js';
 import { State } from './state.js';
 import { Toast } from './components/Toast.js';
 
@@ -38,9 +39,22 @@ class SyncManager {
     let successCount = 0;
     for (const report of pending) {
       try {
+        // Promote queued photos into first-class linked evidence records
+        const evidenceIds = [];
+        for (const ev of (report.evidenceItems || [])) {
+          const saved = await EvidenceService.addEvidence({
+            ...ev,
+            reportId: report.id,
+            activityId: report.matchedActivityId || null,
+            projectId: report.projectId
+          });
+          evidenceIds.push(saved.id);
+        }
+
         // Push to server state
         API.reports.unshift({
           ...report,
+          evidenceIds,
           status: 'pending-review',
           syncedAt: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST'
         });
@@ -79,6 +93,7 @@ class SyncManager {
     State.setConnectionStatus('online');
     API.persist('reports', true);
     API.persist('reviewItems', true);
+    API.persist('evidence', true);
     await this.updatePendingCount();
 
     if (successCount > 0) {

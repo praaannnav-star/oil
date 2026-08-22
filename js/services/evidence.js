@@ -12,7 +12,7 @@ export const EvidenceService = {
   async addEvidence(evidenceItem) {
     await API.delay();
     const item = {
-      id: `EVD-${Date.now()}`,
+      id: `EVD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       createdAt: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST',
       status: 'pending',
       ...evidenceItem

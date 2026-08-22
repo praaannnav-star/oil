@@ -192,8 +192,15 @@ export async function ReviewQueueView() {
       drawerContent.appendChild(unmatchedBox);
     }
 
-    // Section 3: Evidence Preview (if linked)
-    const evidenceList = await EvidenceService.getEvidence(item.topMatch?.id);
+    // Section 3: Evidence Preview (activity-linked + report-linked, deduped)
+    const [activityEvidence, allEvidence] = await Promise.all([
+      EvidenceService.getEvidence(item.topMatch?.id),
+      EvidenceService.getEvidence()
+    ]);
+    const evidenceById = new Map();
+    [...(activityEvidence || []), ...(allEvidence || []).filter(e => e.reportId === item.reportId)]
+      .forEach(e => evidenceById.set(e.id, e));
+    const evidenceList = Array.from(evidenceById.values());
     if (evidenceList && evidenceList.length > 0) {
       const evBox = document.createElement('div');
       evBox.className = 'card p-3 gap-2';
