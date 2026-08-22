@@ -1,10 +1,15 @@
 import { ProjectsService } from '../services/projects.js';
-import { Table } from '../components/Table.js';
 import { Badge } from '../components/Badge.js';
 import { AppRouter } from '../router.js';
 import { Auth, USER_ROLES } from '../services/auth.js';
 import { Button } from '../components/Button.js';
 import { escapeHtml } from '../utils/dom.js';
+
+const RING_COLORS = {
+  'on-track': '#22c55e',
+  'at-risk': '#f59e0b',
+  'delayed': '#ef4444'
+};
 
 export async function ProjectListView() {
   const container = document.createElement('div');
@@ -24,64 +29,85 @@ export async function ProjectListView() {
   }
   container.appendChild(header);
 
-  const projects = await ProjectsService.getProjects();
-  const card = document.createElement('div');
-  card.className = 'card p-4 gap-3';
+  const [projects, pendingCounts, classifications] = await Promise.all([
+    ProjectsService.getProjects(),
+    ProjectsService.getLivePendingCounts(),
+    Promise.resolve(ProjectsService.getClassifications())
+  ]);
 
-  const columns = [
-    {
-      key: 'name',
-      label: 'Project Name',
-      render: (val, row) => `
-        <div class="d-flex flex-col">
-          <strong class="text-sm text-primary">${escapeHtml(val)}</strong>
-          <span class="text-xs text-muted font-mono">${escapeHtml(row.code)} • ${escapeHtml(row.location)}</span>
+  // Filter chips — health + classification category
+  let activeFilter = 'all';
+  const categories = ['all', ...classifications.category];
+  const chipRow = document.createElement('div');
+  chipRow.className = 'chip-row';
+
+  const renderChips = () => {
+    chipRow.innerHTML = '';
+    categories.forEach(cat => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = `btn btn-sm ${activeFilter === cat ? 'btn-primary' : 'btn-secondary'}`;
+      chip.textContent = cat === 'all' ? `All (${projects.length})` : cat;
+      chip.addEventListener('click', () => {
+        activeFilter = cat;
+        renderChips();
+        renderGrid();
+      });
+      chipRow.appendChild(chip);
+    });
+  };
+
+  const grid = document.createElement('div');
+  grid.className = 'project-card-grid mt-3';
+
+  const renderGrid = () => {
+    grid.innerHTML = '';
+    const visible = projects.filter(p => activeFilter === 'all' || p.category === activeFilter);
+    if (visible.length === 0) {
+      grid.innerHTML = '<div class="card p-5 text-center text-muted">No projects match this filter.</div>';
+      return;
+    }
+    visible.forEach(project => {
+      const pct = Math.round(project.actualProgress || 0);
+      const color = RING_COLORS[project.health] || '#94a3b8';
+      const pending = pendingCounts[project.id] ?? project.pendingReviewCount ?? 0;
+
+      const card = document.createElement('article');
+      card.className = 'project-card';
+      card.innerHTML = `
+        <div class="d-flex gap-3 items-start justify-between">
+          <div class="d-flex flex-col gap-1" style="min-width:0;">
+            <strong class="text-sm text-primary">${escapeHtml(project.name)}</strong>
+            <span class="text-xs text-muted font-mono">${escapeHtml(project.code)} • ${escapeHtml(project.location)}</span>
+          </div>
+          <div class="health-ring" style="background: conic-gradient(${color} ${pct * 3.6}deg, rgba(255,255,255,0.08) 0deg);">
+            <span class="${project.health === 'on-track' ? 'text-success' : project.health === 'delayed' ? 'text-danger' : 'text-warning'}">${pct}%</span>
+          </div>
         </div>
-      `
-    },
-    {
-      key: 'health',
-      label: 'Status',
-      width: '120px',
-      render: (val) => Badge({ label: val.toUpperCase(), status: val })
-    },
-    {
-      key: 'actualProgress',
-      label: 'Progress vs Planned',
-      width: '180px',
-      render: (val, row) => `
         <div class="d-flex flex-col gap-1">
           <div class="d-flex justify-between text-xs font-mono font-bold">
-            <span class="text-primary">${val}% Actual</span>
-            <span class="text-muted">${row.plannedProgress}% Plan</span>
+            <span>SPI ${escapeHtml(String(project.spi ?? '—'))}</span>
+            <span class="${(project.variance ?? 0) < 0 ? 'text-danger' : 'text-success'}">${(project.variance ?? 0) > 0 ? '+' : ''}${escapeHtml(String(project.variance ?? 0))}% vs plan</span>
           </div>
           <div class="confidence-bar-bg" style="height:6px;">
-            <div class="confidence-bar-fill ${row.health === 'on-track' ? 'confidence-high' : 'confidence-medium'}" style="width:${val}%;"></div>
+            <div class="confidence-bar-fill ${project.health === 'on-track' ? 'confidence-high' : project.health === 'delayed' ? 'confidence-low' : 'confidence-medium'}" style="width:${pct}%;"></div>
           </div>
         </div>
-      `
-    },
-    {
-      key: 'spi',
-      label: 'SPI',
-      width: '90px',
-      render: (val) => `<strong class="font-mono text-sm ${val < 1 ? 'text-warning' : 'text-success'}">${val}</strong>`
-    },
-    {
-      key: 'delayedActivitiesCount',
-      label: 'Delayed L5/L6',
-      width: '120px',
-      render: (val) => `<span class="text-xs font-mono font-bold ${val > 0 ? 'text-danger' : 'text-success'}">${val} Activities</span>`
-    }
-  ];
+        <div class="chip-row">
+          ${Badge({ label: String(project.health || 'unknown').toUpperCase(), status: project.health })}
+          ${project.category ? `<span class="badge badge-in-progress">${escapeHtml(project.category)}</span>` : ''}
+          ${project.projectType ? `<span class="badge badge-in-progress">${escapeHtml(project.projectType)}</span>` : ''}
+          ${project.riskTier ? `<span class="badge badge-rejected">Tier ${escapeHtml(project.riskTier)}</span>` : ''}
+          ${pending > 0 ? `<span class="badge badge-at-risk">${pending} pending review</span>` : '<span class="badge badge-completed">Review clear</span>'}
+        </div>
+      `;
+      card.addEventListener('click', () => AppRouter.navigate(`/projects/${project.id}`));
+      grid.appendChild(card);
+    });
+  };
 
-  const table = Table({
-    columns,
-    data: projects,
-    onRowClick: (row) => AppRouter.navigate(`/projects/${row.id}`)
-  });
-
-  card.appendChild(table);
-  container.appendChild(card);
+  renderChips();
+  container.appendChild(chipRow);
+  container.appendChild(grid);
   return container;
 }

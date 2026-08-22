@@ -8,6 +8,7 @@ import { Table } from '../components/Table.js';
 import { Icons } from '../components/Icons.js';
 import { AppRouter } from '../router.js';
 import { Auth, USER_ROLES } from '../services/auth.js';
+import { escapeHtml } from '../utils/dom.js';
 
 export async function ProjectDetailView(params = {}) {
   const container = document.createElement('div');
@@ -86,44 +87,46 @@ export async function ProjectDetailView(params = {}) {
   const splitGrid = document.createElement('div');
   splitGrid.className = 'd-grid grid-2 gap-4';
 
-  // Left: Discipline Status
+  // Left: Discipline Status — computed from real L5/L6 activities
+  const activities = await ActivitiesService.getActivities(projectId);
+  const byDiscipline = new Map();
+  for (const act of activities) {
+    if (act.level !== 'L5' && act.level !== 'L6') continue;
+    if (!byDiscipline.has(act.discipline)) {
+      byDiscipline.set(act.discipline, { total: 0, sum: 0, delayed: 0 });
+    }
+    const bucket = byDiscipline.get(act.discipline);
+    bucket.total++;
+    bucket.sum += Number(act.progress || 0);
+    if (act.status === 'delayed') bucket.delayed++;
+  }
+
   const discCard = document.createElement('div');
   discCard.className = 'card p-4 gap-3';
   discCard.innerHTML = `
     <div class="card-header p-0 mb-1">
       <h3 class="card-title">Discipline Progress Tracking</h3>
+      <span class="text-xs text-muted">Computed from live L5/L6 schedule actuals</span>
     </div>
-    <div class="d-flex flex-col gap-3">
-      <div>
-        <div class="d-flex justify-between text-xs font-semibold mb-1">
-          <span>Civil & Structural</span>
-          <span class="font-mono text-primary">78% Complete</span>
-        </div>
-        <div class="confidence-bar-bg" style="height:6px;"><div class="confidence-bar-fill confidence-high" style="width:78%;"></div></div>
-      </div>
-      <div>
-        <div class="d-flex justify-between text-xs font-semibold mb-1">
-          <span>Process Piping & Welds</span>
-          <span class="font-mono text-primary">54% Complete</span>
-        </div>
-        <div class="confidence-bar-bg" style="height:6px;"><div class="confidence-bar-fill confidence-medium" style="width:54%;"></div></div>
-      </div>
-      <div>
-        <div class="d-flex justify-between text-xs font-semibold mb-1">
-          <span>Electrical Substation</span>
-          <span class="font-mono text-primary">48% Complete</span>
-        </div>
-        <div class="confidence-bar-bg" style="height:6px;"><div class="confidence-bar-fill confidence-medium" style="width:48%;"></div></div>
-      </div>
-      <div>
-        <div class="d-flex justify-between text-xs font-semibold mb-1">
-          <span>Instrumentation & DCS</span>
-          <span class="font-mono text-warning">35% (Delayed)</span>
-        </div>
-        <div class="confidence-bar-bg" style="height:6px;"><div class="confidence-bar-fill confidence-low" style="width:35%;"></div></div>
-      </div>
-    </div>
+    <div class="d-flex flex-col gap-3" id="discipline-bars"></div>
   `;
+  const barsBox = discCard.querySelector('#discipline-bars');
+  if (byDiscipline.size === 0) {
+    barsBox.innerHTML = '<p class="text-xs text-muted">No L5/L6 activities scheduled under this project yet.</p>';
+  } else {
+    byDiscipline.forEach((bucket, discipline) => {
+      const avg = Math.round(bucket.sum / bucket.total);
+      const row = document.createElement('div');
+      row.innerHTML = `
+        <div class="d-flex justify-between text-xs font-semibold mb-1">
+          <span>${escapeHtml(discipline)} (${bucket.total} activities${bucket.delayed > 0 ? `, ${bucket.delayed} delayed` : ''})</span>
+          <span class="font-mono ${bucket.delayed > 0 ? 'text-warning' : 'text-primary'}">${avg}% Avg Complete</span>
+        </div>
+        <div class="confidence-bar-bg" style="height:6px;"><div class="confidence-bar-fill ${avg >= 70 ? 'confidence-high' : avg >= 40 ? 'confidence-medium' : 'confidence-low'}" style="width:${avg}%;"></div></div>
+      `;
+      barsBox.appendChild(row);
+    });
+  }
   splitGrid.appendChild(discCard);
 
   // Right: Recent Field Reports

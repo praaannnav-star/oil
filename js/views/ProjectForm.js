@@ -16,6 +16,8 @@ export async function ProjectFormView(params = {}) {
     return container;
   }
   const project = existing || { disciplines: [], health: 'on-track', client: 'Oil India Limited (OIL)' };
+  const cls = ProjectsService.getClassifications();
+  const options = (list, current) => list.map(v => `<option value="${v}" ${current === v ? 'selected' : ''}>${v}</option>`).join('');
   container.innerHTML = `
     <div class="d-flex justify-between items-center flex-wrap gap-3">
       <div><h1 class="text-2xl font-bold text-primary">${editing ? 'Edit Project' : 'Create New Project'}</h1><p class="text-xs text-secondary mt-1">${editing ? 'Maintain delivery ownership, baseline details and project context.' : 'Set up the portfolio record before field and schedule work begins.'}</p></div>
@@ -35,6 +37,16 @@ export async function ProjectFormView(params = {}) {
         <label>Target finish<input type="date" name="targetFinish" required value="${project.targetFinish || ''}"></label>
         <label>Health<select name="health"><option value="on-track" ${project.health === 'on-track' ? 'selected' : ''}>On track</option><option value="at-risk" ${project.health === 'at-risk' ? 'selected' : ''}>At risk</option><option value="delayed" ${project.health === 'delayed' ? 'selected' : ''}>Delayed</option></select></label>
       </div></section>
+      <section class="form-section"><h2>Classification & location</h2><div class="d-grid grid-3 gap-3">
+        <label>Project type<select name="projectType">${options(cls.projectType, project.projectType || 'Plant')}</select></label>
+        <label>Category<select name="category">${options(cls.category, project.category || 'Greenfield')}</select></label>
+        <label>Risk tier<select name="riskTier">${options(cls.riskTier, project.riskTier || 'B')}</select></label>
+        <label>Priority<select name="priority">${options(cls.priority, project.priority || 'P2')}</select></label>
+        <label>Region<select name="region">${options(cls.region, project.region || 'Assam East')}</select></label>
+      </div><div class="d-grid grid-4 gap-3 mt-3">
+        <label>Latitude<input type="number" step="any" name="lat" value="${project.lat ?? ''}" placeholder="27.1882"></label>
+        <label>Longitude<input type="number" step="any" name="lng" value="${project.lng ?? ''}" placeholder="95.3132"></label>
+      </div><p class="text-xs text-muted mt-1">Coordinates power the project map pin (OpenStreetMap embed). Classification drives grouping, badges and report routing defaults.</p></section>
       <section class="form-section"><h2>Scope and handover</h2><label>Description<textarea name="description" required rows="3" placeholder="Describe the project scope and delivery outcome.">${project.description || ''}</textarea></label><div class="discipline-picker">${DISCIPLINES.map(discipline => `<label><input type="checkbox" name="disciplines" value="${discipline}" ${project.disciplines.includes(discipline) ? 'checked' : ''}> ${discipline}</label>`).join('')}</div></section>
       <div class="d-flex justify-end gap-2"><button type="button" id="cancel-project-form-bottom" class="btn btn-secondary">Cancel</button><button type="submit" class="btn btn-primary">${editing ? 'Save Project Changes' : 'Create Project'}</button></div>
     </form>

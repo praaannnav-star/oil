@@ -38,6 +38,10 @@ class PWAManager {
     });
   }
 
+  async canPromptInstall() {
+    return !!this.deferredPrompt && !this.isInstalled;
+  }
+
   async promptInstall() {
     if (this.deferredPrompt) {
       this.deferredPrompt.prompt();

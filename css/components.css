@@ -1032,6 +1032,25 @@
 .landing-text-link { color: #F8FAFC; font-weight: 700; }
 .landing-signal-row { display: flex; flex-wrap: wrap; gap: 1.25rem; margin-top: 5.5rem; color: #94A3B8; font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; }
 .landing-signal-row b { color: #E0291D; margin-right: .35rem; }
+
+/* Landing live pipeline / roles / trust strip (P6) */
+.landing-section-title { text-align: center; font-size: .8rem; letter-spacing: .14em; text-transform: uppercase; color: #94A3B8; margin-bottom: 1.4rem; font-weight: 700; grid-column: 1 / -1; }
+.landing-roles article { cursor: pointer; transition: transform .15s ease, border-color .15s ease, background .15s ease; }
+.landing-roles article:hover { transform: translateY(-3px); border-color: #E0291D; }
+.landing-pipeline { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.landing-roles { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.landing-trust-strip { position: relative; z-index: 1; display: flex; gap: 1.5rem; justify-content: center; align-items: center; flex-wrap: wrap; padding: 1.6rem 2rem; margin-top: 4rem; border-top: 1px solid rgba(255,255,255,.08); }
+.landing-trust-strip .trust-item { font-size: .8rem; color: #94A3B8; text-decoration: none; }
+.landing a.trust-item:hover { color: #E0291D; }
+
+/* Project card grid (P6) */
+.project-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem; }
+.project-card { background: var(--color-surface-el); border: 1px solid rgba(255,255,255,.07); border-radius: 14px; padding: 1.25rem; display: flex; flex-direction: column; gap: .75rem; cursor: pointer; transition: transform .15s ease, border-color .15s ease; }
+.project-card:hover { transform: translateY(-3px); border-color: var(--color-primary); }
+.health-ring { width: 58px; height: 58px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-weight: 700; font-size: .82rem; position: relative; flex-shrink: 0; }
+.health-ring::after { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: var(--color-surface-el); z-index: 0; }
+.health-ring span { position: relative; z-index: 1; }
+.chip-row { display: flex; gap: .5rem; flex-wrap: wrap; }
 .landing-workflow { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin-top: 7rem; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.1); }
 .landing-workflow article { background: rgba(9, 15, 24, .88); padding: 2rem; }
 .landing-workflow span { color: #F59E0B; font-weight: 800; font-size: .8rem; }

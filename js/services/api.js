@@ -107,6 +107,35 @@ class ApiService {
     }
   }
 
+  // Public portfolio stats for the landing pipeline — cached to IDB so the
+  // marketing numbers stay truthful even when offline.
+  async getPublicStats() {
+    const stats = {
+      projects: this.projects.length,
+      activities: this.activities.filter(a => a.level === 'L5' || a.level === 'L6').length,
+      pendingReviews: this.reviewItems.filter(i => i.state === 'needs-review').length,
+      evidence: this.evidence.length,
+      reports: this.reports.length,
+      savedAt: Date.now()
+    };
+    try {
+      await DB.saveEntity('publicStats', stats);
+    } catch (err) {
+      console.warn('Could not cache public stats', err);
+    }
+    return stats;
+  }
+
+  async getPublicStatsCached() {
+    try {
+      return await this.getPublicStats();
+    } catch (err) {
+      const cached = await DB.getEntity('publicStats');
+      if (cached) return cached;
+      return { projects: 0, activities: 0, pendingReviews: 0, evidence: 0, reports: 0 };
+    }
+  }
+
   resetDemoData() {
     for (const name of COLLECTIONS) {
       this[name] = JSON.parse(JSON.stringify(SEEDS[name]));
