@@ -1,0 +1,49 @@
+{
+  "name": "Oil India Limited — Field to Schedule Bridge",
+  "short_name": "OIL Tracker",
+  "description": "Intelligent Data Capture & Schedule-Linking Layer for Infrastructure Project Management",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F9FAFB",
+  "theme_color": "#F9FAFB",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/favicon.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["productivity", "business", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Report Progress",
+      "short_name": "Report",
+      "description": "Capture field progress with voice or text",
+      "url": "./#/progress/new",
+      "icons": [{ "src": "./icons/icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Review Queue",
+      "short_name": "Review",
+      "description": "Review pending activity matches",
+      "url": "./#/review",
+      "icons": [{ "src": "./icons/icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Schedule Explorer",
+      "short_name": "Schedule",
+      "description": "Explore L1-L6 schedule hierarchy",
+      "url": "./#/schedule",
+      "icons": [{ "src": "./icons/icon.svg", "sizes": "192x192" }]
+    }
+  ]
+}

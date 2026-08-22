@@ -1,0 +1,261 @@
+================================================================================
+ OIL INDIA — SIH26122 | UI REDESIGN & INTEGRATION PLAN
+ Landing · Projects · Session · Images · Deployment · Workers API · Voice ·
+ Classification · LLM Reports · Survey · Mapping
+ Target stack (unchanged): Vanilla HTML/CSS/JS ES modules + PWA
+ New backend: Cloudflare Workers API + D1 + Cloudinary + Workers AI
+================================================================================
+
+0. ASSUMPTIONS (defaults used where input was not provided)
+--------------------------------------------------------------------------------
+- "Survey"        = field survey/inspection module (checklist + photos + notes +
+                    location), producing reviewable records like progress reports.
+- "Mapping"       = map view of project sites & activity locations. Base: embed
+                    OpenStreetMap iframe tiles (zero-dependency). Optional upgrade:
+                    Leaflet via single <script> CDN tag (flagged as the only
+                    external runtime dep; off by default).
+- Redesign scope  = restructure/restyle existing views; NO framework migration.
+- Plan file       = UI_REDESIGN_PLAN.txt at repo root; all new code under js/.
+- Existing audit findings respected: persistence-first, honest extraction,
+                    session-bound reviewer identity (see state.txt audit).
+
+1. INFORMATION ARCHITECTURE (nav changes)
+--------------------------------------------------------------------------------
+Sidebar groups become:
+  COMMAND CENTER ....... Overview · Projects · Map [NEW] · Schedule Explorer
+  FIELD OPERATIONS ..... Report Progress · Surveys [NEW] · Evidence Packets
+  RECONCILIATION ....... Review Queue
+  INTELLIGENCE ......... Analytics · Execution Memory · Audit Trail
+  ADMINISTRATION ....... Admin Panel · Deployment Health [NEW]
+Mobile bottom nav: Overview · Map · [mic FAB → capture] · Surveys · Review
+Routes added: #/map  #/surveys  #/surveys/new  #/surveys/:id
+              #/projects/:id/map (project site map tab)
+
+2. LANDING PAGE REDESIGN (views/Landing.js)
+--------------------------------------------------------------------------------
+Keep hero + workflow strip pattern; replace static claims with live proof:
+  S1 HERO ............ headline, CTA "Enter Operations", install-PWA button
+                       (reuse PWA.promptInstall()), animated Oil-brand gradient
+                       (CSS only; CanvasLiquid stays on login only).
+  S2 LIVE PIPELINE ... 5-step diagram (Capture→Extract→Match→Review→Reconcile)
+                       each node shows REAL counts from GET /api/stats/public
+                       (projects, activities, pending reviews, evidence).
+                       Fallback when offline/unauthed: cached stats from IDB.
+  S3 ROLE CARDS ...... Field Supervisor / Planner / Reviewer / Executive cards
+                       each deep-linking to persona login (kept behind demo flag).
+  S4 TRUST STRIP ..... offline badge, audit-chain badge (links to #/audit),
+                       evidence count — all data-derived, no fabricated numbers
+                       (removes current hardcoded fiction per audit Part 8).
+Files touched: views/Landing.js, css/components.css (landing section), api.js.
+
+3. SESSION: LOGIN / LOGOUT REDESIGN + WORKERS AUTH
+--------------------------------------------------------------------------------
+UI (views/Login.js):
+  - Two modes toggled by env/config: DEMO (persona grid, current behavior) and
+    LIVE (username+password form, forgot-password link stub).
+  - Session card in header replaced by avatar menu: profile, role, active
+    project context, "Sign Out" with confirm; idle-timeout warning modal (20min).
+Backend contract (Workers):
+  POST /api/auth/login     {username,password} -> {jwt,refresh,user} (D1 users,
+                           bcrypt-hashed passwords; demo personas seeded)
+  POST /api/auth/refresh   {refresh} -> {jwt}
+  POST /api/auth/logout    {refresh} -> revoke row in D1
+Client (services/auth.js):
+  - Store jwt in memory + refresh in httpOnly-style keyed IDB (never localStorage).
+  - fetch wrapper adds Authorization: Bearer, auto-refresh on 401 once,
+    logout-and-redirect on refresh failure.
+  - RBAC: allowedRoutes move server-side (JWT claim); client keeps UI-only guard
+    (existing router.js logic preserved as convenience, not security).
+Reviewer identity fix: review.js uses Auth.getUser() (audit item Serious#6).
+
+4. PROJECT MANAGEMENT REDESIGN (ProjectList/Detail/Form/ManagerPanel)
+--------------------------------------------------------------------------------
+  LIST ...... filter chips (status/health/discipline/classification) + card grid;
+              each card: health ring, SPI, % bar, classification tag, mini map
+              thumb (static OSM tile URL), pending-review count (live).
+  FORM ...... sections: Identity / Baseline dates / Classification (new) /
+              Location (lat,lng picker from map) / Disciplines.
+              NEW classification fields:
+                projectType  (Pipeline|Plant|Substation|Roads|Drilling|Other)
+                category     (Brownfield|Greenfield|Maintenance|Emergency)
+                riskTier     (A|B|C)   priority      (P1..P4)
+                region       (Assam East|Assam West|Rajasthan|Andhra|Other)
+              Classification powers grouping, color badges, and LLM routing
+              defaults (Section 7).
+  DETAIL .... tabs: Overview (computed KPIs only) · Schedule · Map (site pin +
+              activity pins) · Reports (LLM summaries) · Surveys · Evidence ·
+              Audit. Remove hardcoded discipline bars (audit Critical#2).
+New service methods (same names kept): ProjectsService.getClassifications(),
+setLocation(id,lat,lng) backed by D1 columns.
+
+5. IMAGES / EVIDENCE PIPELINE (Cloudinary)
+--------------------------------------------------------------------------------
+Flow: capture(file input, capture=environment)
+  → canvas downscale max 1600px + JPEG q0.82 (js/utils/image.js NEW)
+  → stage blob in IndexedDB store 'evidenceQueue' {id,reportId,blob,meta}
+  → if online: POST /api/evidence/sign {reportId,mime} → signed params
+  → PUT directly to Cloudinary → POST /api/evidence/confirm {publicId}
+  → thumbnail URL stored on report; gallery uses Cloudinary transforms.
+Offline: queue persists; sync.js flushes queue before reports (dependency order).
+UI changes: EvidenceViewer gets upload-progress chips + retry-on-fail states;
+            Field Capture step 4 shows real thumbnails from staged blobs
+            (fixes audit Broken-evidence finding); EXIF date/GPS read via
+            createImageBitmap metadata where available, else manual geo tag.
+
+6. VOICE RECOGNITION PLAN
+--------------------------------------------------------------------------------
+Primary: Web Speech API (current FieldCapture.js implementation kept verbatim).
+Fallback chain (NEW js/services/speech.js):
+  1. window.SpeechRecognition / webkitSpeechRecognition
+  2. MediaRecorder → POST /api/transcribe → Workers AI @cf/openai/whisper
+     (en-IN prompt hint) → text injected into same transcript box.
+  3. Manual typing (always available).
+Mic button shows which engine is active ("Live STT"/"Server ASR").
+Push-to-talk UX retained; recording indicator + waveform CSS animation.
+
+7. PROJECT CLASSIFICATION (auto-suggest)
+--------------------------------------------------------------------------------
+On report submit, Worker endpoint classifies and suggests:
+  POST /api/classify {transcript} → {projectId?, discipline, confidence}
+Rules engine first (discipline keywords — existing reports.js logic moved
+server-side), then LLM tie-breaker (Section 8) constrained to enum values.
+UI: Field Capture step 2 shows "Suggested project: Duliajan CGGS (92%)" chip
+with one-tap switch of header project context; wrong suggestions logged to
+audit for tuning. Classification fields from Section 4 also auto-fillable.
+
+8. LLM MANAGING REPORTS (Workers AI)
+--------------------------------------------------------------------------------
+Endpoints (all schema-constrained JSON out, temperature 0):
+  POST /api/extract      transcript → structured event
+                         {discipline,activity,assetTag,qty,unit,start,end,status,
+                          blocker,date} — nulls allowed, NEVER invented values
+                         (fixes audit fabrication finding). Heuristic fallback
+                         (current code) used offline/degraded mode; UI labels
+                         source ("AI" vs "Rules").
+  POST /api/summarize    {projectId} → daily digest text for Overview
+                         "What changed since yesterday?" (replaces hardcoded
+                         block Overview.js:101-127 with derived truth).
+  POST /api/delay-cause  blocker text → normalized cause enum (feeds Execution
+                         Memory tables from real data instead of static arrays).
+Prompt hygiene: system prompt pinned in worker/src/prompts.js; every LLM field
+carries {value, source:"llm"|"rules"|"user", confidence} provenance triple;
+review drawer displays provenance so planners see what AI touched (audit
+Explainability finding). All LLM output lands in review queue — never
+auto-applied to schedule (state.txt §14 principle).
+
+9. SURVEY MODULE [NEW]
+--------------------------------------------------------------------------------
+Data model (D1): surveys(id, projectId, activityId?, type
+  [SiteInspection|SafetyWalkdown|ProgressSurvey|QualityCheck], template_id,
+  responses_json, status[draft|submitted|reviewed], geo, created_by, timestamps)
+  survey_templates(id, type, sections_json) — seeded checklists.
+UI:
+  #/surveys ............ list w/ filters (type/status/project), sync badges
+  #/surveys/new ........ wizard: pick template → checklist (checkboxes,
+                         numeric fields, photo attach reusing §5 pipeline,
+                         voice-note-to-text per question via §6) → geo auto-tag
+                         → submit to review queue as first-class item type.
+  #/surveys/:id ........ detail + reviewer actions (same Drawer pattern as
+                         ReviewQueue).
+Services: js/services/surveys.js mirroring reports.js shape; offline drafts in
+IDB 'surveyQueue'; audit entries on submit/review.
+
+10. MAPPING MODULE [NEW]
+--------------------------------------------------------------------------------
+Phase A (zero-dependency): static OSM tile embeds
+  https://www.openstreetmap.org/export/embed.html?bbox=...&marker=lat,lng
+  used in Project Detail map tab + landing mini-thumbs. No JS lib, works
+  offline-degraded (cached tile or placeholder).
+Phase B (optional flag ENABLE_LEAFLET=1): single CDN <script> Leaflet;
+  activity pins colored by status, popups link to #/activities/:id;
+  cluster toggle >50 pins; legend. Geolocation API for "I am here" pin on
+  capture/survey forms (permission-gated, manual fallback always present).
+D1 columns: projects.lat/lng; activities.lat/lng (nullable); no postgis needs.
+
+11. DEPLOYMENT (Cloudflare)
+--------------------------------------------------------------------------------
+Layout:
+  /                    existing static PWA (Pages) — untouched structure
+  worker/              NEW: src/index.js (router), src/routes/{auth,projects,
+                       reports,reviews,evidence,surveys,classify,llm}.js,
+                       src/prompts.js, schema.sql, wrangler.toml
+wrangler.toml sketch:
+  name="oil-bridge-api" main="src/index.js" compatibility_date="..."
+  [[d1_databases]] binding=DB name=oil-field-db
+  [vars] CLOUDINARY_CLOUD=..., DEMO_MODE=0, ENABLE_LEAFLET=0
+  secrets: CLOUDINARY_API_KEY/SECRET, JWT_SECRET (wrangler secret put)
+D1 core tables: users, sessions(refresh), projects(+classification+geo),
+  activities, field_reports, extractions(provenance), matches, reviews,
+  surveys(+templates), evidence(public_id), audit_events(seq,prev_hash,payload_hash),
+  stats_cache. Audit chain verified by nightly Worker cron + /api/audit/verify.
+Client switch: api.js gains ApiHttp adapter behind existing service method
+  names; useMock=false routes through fetch with retry/backoff; IDB remains
+  offline cache + write-behind queue (sync.js extended to drain evidence +
+  survey queues). CORS: same-zone route /api/* via Pages _redirects proxy →
+  no CORS headaches, one origin.
+Deploy steps: wrangler d1 execute --file=schema.sql → deploy worker → set
+  secrets → Pages deploy static → smoke script (login→capture→approve→audit).
+Windows: update start-server.bat unchanged for dev; add deploy-cf.bat calling
+  npx wrangler commands. Rollback = redeploy previous Pages commit + worker
+  version pin (`wrangler rollback`).
+
+12. BUILD ORDER (each phase independently shippable/demo-safe)
+--------------------------------------------------------------------------------
+P0 Hygiene .......... escapeHtml util everywhere, Toast.danger fix, remove
+                      user-scalable=no, git init, state.txt out of repo. (1d)
+P1 Persistence ...... IDB stores for all entities; services read/write IDB;
+                      refresh survives offline demo. (2d)
+P2 Session+API ...... Workers auth + fetch adapter + avatar menu/login modes. (3d)
+P3 Honest core ...... /api/extract + classify + deterministic reconciliation
+                      (variance math, rollups), reviewer=session user. (3d)
+P4 Images ........... compress/stage/sign/upload pipeline + gallery states. (2d)
+P5 Voice+LLM ........ speech.js fallback chain, summarize, delay-cause. (2d)
+P6 Projects+Landing . redesigns per §2/§4 wired to live endpoints. (3d)
+P7 Survey ........... templates, wizard, review integration. (3d)
+P8 Map .............. Phase A embeds; Leaflet behind flag. (1d)
+P9 Deploy polish .... D1 migrations, cron verify, smoke script in CI,
+                      rollback drill, DEPLOYMENT_GUIDE.md rewrite. (2d)
+Total ≈ 22 dev-days sequential; P0–P4 alone yield a refresh-proof,
+honest, authenticated demo even before redesign polish lands.
+
+13. RISKS & MITIGATIONS
+--------------------------------------------------------------------------------
+R1 Workers AI JSON drift ....... schema validation + retry-once + rules fallback;
+                                 provenance triple makes bad fields visible.
+R2 Whisper latency on 2G ....... cap recordings at 60s; show progress; typing
+                                 fallback always visible.
+R3 Cloudinary cost/abuse ....... signed uploads only, per-user rate limit,
+                                 max 5 photos/report, transform cache.
+R4 JWT in vanilla JS ........... short-lived access (15m) + rotating refresh;
+                                 no tokens in localStorage; logout revokes D1 row.
+R5 Leaflet CDN dependency ...... default OFF; Phase A embeds are the shipped map.
+R6 Scope creep vs SIH demo ..... phase gates: each P# ends with working jury
+                                 script run (README §2-min flow must pass).
+R7 Offline conflict edits ...... last-write-wins + audit event; conflicts never
+                                 silently drop (banner lists merged items).
+
+14. OPEN DECISIONS (sign-off needed before build)
+--------------------------------------------------------------------------------
+D1 Confirm survey template set for MVP (default: SiteInspection + ProgressSurvey).
+D2 Enable Leaflet Phase B? (default: ship Phase A only).
+D3 Keep persona quick-login in LIVE mode? (default: DEMO flag only).
+D4 Real user accounts seeded from where? (default: admin-seeded via Worker script).
+D5 Map pin source for activities lacking geo: manual entry vs skip (default: skip).
+
+15. ACCEPTANCE CRITERIA
+--------------------------------------------------------------------------------
+A1 Refresh at any point mid-workflow loses zero submitted data.
+A2 Extraction returns nulls, not invented times; provenance shown per field.
+A3 Approve action computes and displays real finish variance + parent rollup.
+A4 Photo attached offline survives restart and reaches Cloudinary after sync.
+A5 Voice works on Chrome (STT) and degrades gracefully to ASR/typing elsewhere.
+A6 Survey can be captured fully offline and appears in review queue post-sync.
+A7 Audit page shows hash-chained entries; /api/audit/verify passes.
+A8 Login/logout uses server sessions; reviewer name = session user everywhere.
+A9 Landing page shows only data-derived numbers; hardcoded panels removed.
+A10 `wrangler deploy` + static deploy reproduce full stack from clean clone.
+
+================================================================================
+ END OF PLAN — UI_REDESIGN_PLAN.txt
+ Next step on go-ahead: begin P0 Hygiene phase.
+================================================================================

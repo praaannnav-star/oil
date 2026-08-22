@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="96" fill="#FFFFFF"/>
+  <!-- Oil India Official Emblem (Vectorized) -->
+  <g transform="translate(0, 10)">
+    <!-- Top Black Ring 'O' with White Hole -->
+    <path fill="#231F20" fill-rule="evenodd" d="M 256,50 C 330,50 385,100 385,175 C 385,250 330,300 256,300 C 182,300 127,250 127,175 C 127,100 182,50 256,50 Z M 256,125 C 228,125 206,147 206,175 C 206,203 228,225 256,225 C 284,225 306,203 306,175 C 306,147 284,125 256,125 Z"/>
+    <!-- Bottom Red Stem 'I' -->
+    <rect x="210" y="315" width="92" height="135" rx="4" fill="#E31E24"/>
+  </g>
+</svg>

@@ -1,0 +1,114 @@
+:root {
+  /* Surface & Background (Light Theme based on Logo) */
+  --color-bg: #F9FAFB;
+  --color-surface: #FFFFFF;
+  --color-surface-el: #F3F4F6;
+  --color-surface-hover: #E5E7EB;
+  --color-surface-active: #D1D5DB;
+
+  /* Borders & Dividers */
+  --color-border: #E5E7EB;
+  --color-border-light: #F3F4F6;
+  --color-border-subtle: rgba(0, 0, 0, 0.05);
+
+  /* Typography */
+  --color-text-primary: #111827;
+  --color-text-secondary: #374151;
+  --color-text-muted: #6B7280;
+  --color-text-inverse: #FFFFFF;
+
+  /* Brand Accents */
+  --color-primary: #E0291D;
+  --color-primary-hover: #C52319;
+  --color-primary-dim: rgba(224, 41, 29, 0.15);
+  --color-primary-glow: rgba(224, 41, 29, 0.25);
+  --color-secondary: #111827;
+
+  /* Functional Semantic Statuses */
+  --color-success: #10B981;
+  --color-success-dim: rgba(16, 185, 129, 0.15);
+  --color-warning: #F59E0B;
+  --color-warning-dim: rgba(245, 158, 11, 0.15);
+  --color-danger: #EF4444;
+  --color-danger-dim: rgba(239, 68, 68, 0.15);
+  --color-info: #0284C7;
+  --color-info-dim: rgba(2, 132, 199, 0.15);
+
+  /* Schedule Specific Semantic States */
+  --status-on-track: #10B981;
+  --status-in-progress: #0284C7;
+  --status-completed: #6366F1;
+  --status-at-risk: #F59E0B;
+  --status-delayed: #EF4444;
+  --status-pending-review: #EAB308;
+  --status-ambiguous: #F97316;
+  --status-unmatched: #EC4899;
+  --status-rejected: #991B1B;
+  --status-syncing: #38BDF8;
+  --status-offline: #F59E0B;
+  --status-sync-failed: #EF4444;
+
+  /* Typography Scale */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Monaco, Consolas, monospace;
+
+  --text-xs: 0.75rem;    /* 12px */
+  --text-sm: 0.8125rem;  /* 13px */
+  --text-base: 0.875rem; /* 14px */
+  --text-md: 1rem;       /* 16px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;    /* 24px */
+  --text-3xl: 1.875rem;  /* 30px */
+
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* Spacing Scale (Base: 4px) */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem;  /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem;    /* 16px */
+  --space-5: 1.25rem; /* 20px */
+  --space-6: 1.5rem;  /* 24px */
+  --space-8: 2rem;    /* 32px */
+  --space-10: 2.5rem; /* 40px */
+  --space-12: 3rem;   /* 48px */
+  --space-16: 4rem;   /* 64px */
+
+  /* Borders & Radius */
+  --radius-xs: 3px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 12px -1px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 15px rgba(37, 99, 235, 0.3);
+
+  /* Layout Dimensions */
+  --header-height: 56px;
+  --sidebar-width: 250px;
+  --sidebar-collapsed-width: 64px;
+  --mobile-nav-height: 60px;
+  --max-content-width: 1600px;
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Z-Index Hierarchy */
+  --z-base: 1;
+  --z-sticky: 100;
+  --z-header: 200;
+  --z-drawer: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+}
