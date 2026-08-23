@@ -9,6 +9,17 @@
 
 ---
 
+## 🚀 Live Deployment
+
+The application is currently deployed and live on Cloudflare.
+
+- **Web Application (PWA):** [https://master.oil-bridge-pwa.pages.dev](https://master.oil-bridge-pwa.pages.dev)
+- **Backend API:** [https://oil-bridge-api.praaannnav.workers.dev/api](https://oil-bridge-api.praaannnav.workers.dev/api)
+
+*Note: Use the "1-Click Persona Login" cards on the landing page to instantly test different role-based views without needing a password.*
+
+---
+
 ## 🏗️ Overview & Architecture
 
 This application bridges the critical operational gap between **L5/L6 project schedules** and **real-time field progress**.
