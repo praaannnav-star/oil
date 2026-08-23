@@ -1,0 +1,17 @@
+{
+  "name": "oil-bridge-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Cloudflare Workers API + D1 backend for the Oil India Field-to-Schedule Bridge PWA (SIH26122)",
+  "scripts": {
+    "dev": "wrangler dev --local --port 8787",
+    "deploy": "wrangler deploy",
+    "db:local": "wrangler d1 execute oil-field-db --local --file=./schema.sql",
+    "db:remote": "wrangler d1 execute oil-field-db --remote --file=./schema.sql",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

@@ -19,7 +19,7 @@ export async function LandingView() {
       <div class="landing-actions">
         <button id="landing-enter" class="btn btn-primary btn-lg">Enter Operations</button>
         <button id="landing-install" class="btn btn-secondary btn-lg d-none">Install Field PWA</button>
-        <a href="#landing-pipeline" class="landing-text-link">See the live pipeline ↓</a>
+        <button id="landing-scroll-pipeline" class="landing-text-link" style="background:none;border:none;cursor:pointer;">See the live pipeline ↓</button>
       </div>
     </section>
 
@@ -42,7 +42,7 @@ export async function LandingView() {
 
     <section class="landing-trust-strip">
       <span id="trust-offline"></span>
-      <a href="#/audit" class="trust-item">🔗 Immutable audit chain</a>
+      <span class="trust-item">🔗 Immutable audit chain</span>
       <span id="trust-evidence"></span>
       <span class="trust-item">📴 Works fully offline</span>
     </section>
@@ -51,6 +51,13 @@ export async function LandingView() {
   container.querySelector('#landing-enter').addEventListener('click', () => {
     AppRouter.navigate(Auth.isAuthenticated() ? '/overview' : '/login');
   });
+
+  const scrollBtn = container.querySelector('#landing-scroll-pipeline');
+  if (scrollBtn) {
+    scrollBtn.addEventListener('click', () => {
+      container.querySelector('#landing-pipeline')?.scrollIntoView({ behavior: 'smooth' });
+    });
+  }
 
   // Install prompt only when the browser offers one
   const installBtn = container.querySelector('#landing-install');

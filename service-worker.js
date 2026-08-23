@@ -1,4 +1,4 @@
-const CACHE_NAME = 'oil-tracker-v3';
+const CACHE_NAME = 'oil-tracker-v4';
 const APP_SHELL = [
   './',
   './index.html',
@@ -21,6 +21,7 @@ const APP_SHELL = [
   './js/utils/dom.js',
   './js/services/auth.js',
   './js/services/api.js',
+  './js/services/http.js',
   './js/services/projects.js',
   './js/services/activities.js',
   './js/services/reports.js',
@@ -28,12 +29,15 @@ const APP_SHELL = [
   './js/services/review.js',
   './js/services/audit.js',
   './js/services/analytics.js',
+  './js/services/speech.js',
+  './js/services/surveys.js',
   './js/data/mock-projects.js',
   './js/data/mock-activities.js',
   './js/data/mock-reports.js',
   './js/data/mock-evidence.js',
   './js/data/mock-review.js',
   './js/data/mock-audit.js',
+  './js/data/survey-templates.js',
   './js/components/Badge.js',
   './js/components/Button.js',
   './js/components/Card.js',
@@ -66,7 +70,8 @@ const APP_SHELL = [
   './js/views/AuditTrail.js',
   './js/views/AdminPanel.js',
   './js/views/ProjectManagerPanel.js',
-  './js/views/ProjectForm.js'
+  './js/views/ProjectForm.js',
+  './js/views/SurveyWizard.js'
 ];
 
 self.addEventListener('install', (event) => {

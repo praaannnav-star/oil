@@ -1,0 +1,29 @@
+# OIL Bridge API — Cloudflare Workers backend for the SIH26122 PWA.
+# Deploy:  npx wrangler d1 execute oil-field-db --file=./schema.sql --remote
+#          npx wrangler secret put JWT_SECRET
+#          npx wrangler secret put CLOUDINARY_API_SECRET   (optional)
+#          npx wrangler deploy
+
+name = "oil-bridge-api"
+main = "src/index.js"
+compatibility_date = "2026-08-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "oil-field-db"
+database_id = "e55983f2-ac0b-4a7e-8c0a-3cb5f49a3ce1"
+
+[ai]
+binding = "AI"
+
+[vars]
+CLOUDINARY_CLOUD = ""
+CLOUDINARY_API_KEY = ""
+FOLDER_EVIDENCE = "oil-evidence"
+DEMO_MODE = "1"
+ENABLE_LEAFLET = "0"
+ACCESS_TTL_SECONDS = "900"
+REFRESH_TTL_DAYS = "30"
+
+[triggers]
+crons = ["0 20 * * *"]

@@ -8,6 +8,7 @@ import { Toast } from '../components/Toast.js';
 import { Icons } from '../components/Icons.js';
 import { ReviewService } from '../services/review.js';
 import { EvidenceService } from '../services/evidence.js';
+import { ReportsService } from '../services/reports.js';
 import { AppRouter } from '../router.js';
 import { escapeHtml } from '../utils/dom.js';
 
@@ -83,12 +84,24 @@ export async function ReviewQueueView() {
       {
         key: 'extractedEvent',
         label: 'Extracted Field Event',
-        render: (val, row) => `
-          <div class="d-flex flex-col">
-            <strong class="text-sm text-primary">${escapeHtml(val?.activity || 'Site Observation')}</strong>
-            <span class="text-xs text-muted font-mono">${escapeHtml(row.reporter)} • ${escapeHtml(row.age || 'Today')}</span>
-          </div>
-        `
+        render: (val, row) => {
+          const urg = row.urgency || { priority: 'P4', label: 'P4 Info' };
+          const role = row.suggestedReviewerRole || 'Lead Planner';
+          return `
+            <div class="d-flex flex-col gap-1">
+              <div class="d-flex items-center gap-2 flex-wrap">
+                <strong class="text-sm text-primary">${escapeHtml(val?.activity || 'Site Observation')}</strong>
+                ${urg.priority === 'P1' ? '<span class="badge badge-rejected" style="font-size:10px; padding:1px 6px;">P1 CRITICAL</span>' : ''}
+                ${urg.priority === 'P2' ? '<span class="badge badge-warning" style="font-size:10px; padding:1px 6px;">P2 HIGH</span>' : ''}
+                ${urg.priority === 'P3' ? '<span class="badge badge-in-progress" style="font-size:10px; padding:1px 6px;">P3 MEDIUM</span>' : ''}
+              </div>
+              <div class="d-flex items-center gap-2 text-xs text-muted font-mono flex-wrap">
+                <span>${escapeHtml(row.reporter)} • ${escapeHtml(row.age || 'Today')}</span>
+                <span class="badge badge-neutral" style="font-size:10px; padding:1px 6px;">👤 Reviewer: ${escapeHtml(role)}</span>
+              </div>
+            </div>
+          `;
+        }
       },
       {
         key: 'topMatch',
@@ -154,23 +167,118 @@ export async function ReviewQueueView() {
     const drawerContent = document.createElement('div');
     drawerContent.className = 'd-flex flex-col gap-4';
 
+    const urg = item.urgency || { priority: 'P4', label: 'P4 Info', reason: 'Routine' };
+    const role = item.suggestedReviewerRole || 'Lead Planner';
+
     // Section 1: Source & Event Details
     const eventCard = document.createElement('div');
     eventCard.className = 'card p-3 gap-2';
     eventCard.innerHTML = `
-      <div class="d-flex justify-between items-center">
-        <span class="text-xs font-bold text-muted uppercase">EXTRACTED FIELD OBSERVATION</span>
+      <div class="d-flex justify-between items-center flex-wrap gap-1">
+        <div class="d-flex items-center gap-2">
+          <span class="text-xs font-bold text-muted uppercase">EXTRACTED FIELD OBSERVATION</span>
+          ${urg.priority === 'P1' ? '<span class="badge badge-rejected" style="font-size:10px;">P1 CRITICAL</span>' : ''}
+          ${urg.priority === 'P2' ? '<span class="badge badge-warning" style="font-size:10px;">P2 HIGH</span>' : ''}
+          ${urg.priority === 'P3' ? '<span class="badge badge-in-progress" style="font-size:10px;">P3 MEDIUM</span>' : ''}
+        </div>
         <span class="text-xs text-muted font-mono">${escapeHtml(item.reporter)} (${escapeHtml(item.age || 'Today')})</span>
       </div>
-      <div class="text-sm font-semibold text-primary">${escapeHtml(item.extractedEvent?.activity || 'Site Observation')}</div>
+      <div class="text-sm font-semibold text-primary" data-field="activity">${escapeHtml(item.extractedEvent?.activity || 'Site Observation')}</div>
       <div class="d-flex gap-3 text-xs text-secondary flex-wrap">
-        <span>Discipline: <strong>${escapeHtml(item.discipline)}</strong></span>
-        <span>Date: <strong>${escapeHtml(item.extractedEvent?.date || 'Today')}</strong></span>
-        <span>Status: <strong>${escapeHtml(item.extractedEvent?.status || 'Completed')}</strong></span>
-        <span>Blocker: <strong>${escapeHtml(item.extractedEvent?.blocker || 'None')}</strong></span>
+        <span>Discipline: <strong data-field="discipline">${escapeHtml(item.discipline)}</strong></span>
+        <span>Date: <strong data-field="date">${escapeHtml(item.extractedEvent?.date || 'Today')}</strong></span>
+        <span>Status: <strong data-field="status">${escapeHtml(item.extractedEvent?.status || 'Completed')}</strong></span>
+        <span>Blocker: <strong data-field="blocker">${escapeHtml(item.extractedEvent?.blocker || 'None')}</strong></span>
+      </div>
+      <div class="d-flex items-center gap-2 pt-1 border-t border-border text-xs text-muted">
+        <span>Suggested Reviewer:</span>
+        <span class="badge badge-neutral font-semibold">👤 ${escapeHtml(role)}</span>
+        ${urg.reason && urg.reason !== 'None' ? `<span class="text-muted ml-auto">Urgency note: <em>${escapeHtml(urg.reason)}</em></span>` : ''}
       </div>
     `;
     drawerContent.appendChild(eventCard);
+
+    // Section 1b: AI Correction Assist
+    if (item.state !== 'approved') {
+      const correctCard = document.createElement('div');
+      correctCard.className = 'card p-3 gap-3';
+      correctCard.innerHTML = `
+        <div class="text-xs font-bold text-muted uppercase">SUGGEST CORRECTION (AI ASSIST)</div>
+        <div class="d-flex gap-2">
+          <input type="text" id="correction-notes" class="input flex-1" placeholder="e.g. Change discipline to Electrical...">
+          <button id="btn-correct" class="btn btn-secondary btn-sm">Suggest</button>
+        </div>
+        <div id="correction-diff-mount" class="d-flex flex-col gap-2 mt-2 d-none"></div>
+      `;
+      drawerContent.appendChild(correctCard);
+
+      const btnCorrect = correctCard.querySelector('#btn-correct');
+      const inputNotes = correctCard.querySelector('#correction-notes');
+      const diffMount = correctCard.querySelector('#correction-diff-mount');
+
+      btnCorrect.addEventListener('click', async () => {
+        const notes = inputNotes.value.trim();
+        if (!notes) return Toast.info('Please enter correction notes.');
+        btnCorrect.disabled = true;
+        btnCorrect.textContent = '...';
+        try {
+          const res = await ReportsService.correctReport(item.reportId || item.id, notes);
+          diffMount.innerHTML = '';
+          diffMount.classList.remove('d-none');
+          
+          let hasChanges = false;
+          const oldEvent = item.extractedEvent || {};
+          const newEvent = res.event || {};
+          
+          Object.keys(newEvent).forEach(key => {
+            const oldVal = oldEvent[key];
+            const newVal = newEvent[key];
+            if (oldVal !== newVal) {
+              hasChanges = true;
+              const row = document.createElement('div');
+              row.className = 'd-flex justify-between items-center p-2 rounded';
+              row.style.background = 'var(--color-surface-hover)';
+              row.innerHTML = `
+                <div class="text-xs d-flex align-center gap-2">
+                  <span class="text-muted font-mono uppercase">${key}:</span>
+                  <span style="text-decoration:line-through; color:var(--color-danger)">${escapeHtml(String(oldVal || 'null'))}</span>
+                  <span>→</span>
+                  <span class="font-bold text-success">${escapeHtml(String(newVal || 'null'))}</span>
+                </div>
+                <div class="d-flex gap-1">
+                  <button class="btn btn-ghost btn-sm text-success btn-accept" data-val="${escapeHtml(String(newVal || ''))}">Accept</button>
+                  <button class="btn btn-ghost btn-sm text-danger btn-discard">Discard</button>
+                </div>
+              `;
+              diffMount.appendChild(row);
+              
+              row.querySelector('.btn-accept').addEventListener('click', () => {
+                item.extractedEvent[key] = newVal;
+                const fieldEl = eventCard.querySelector(`[data-field="${key}"]`);
+                if (fieldEl) fieldEl.textContent = String(newVal || '');
+                row.remove();
+                if (diffMount.children.length === 0) diffMount.classList.add('d-none');
+                Toast.success(`Accepted new ${key}`);
+              });
+              
+              row.querySelector('.btn-discard').addEventListener('click', () => {
+                row.remove();
+                if (diffMount.children.length === 0) diffMount.classList.add('d-none');
+              });
+            }
+          });
+          
+          if (!hasChanges) {
+            diffMount.innerHTML = '<span class="text-xs text-muted">No schema fields changed based on notes.</span>';
+          }
+        } catch (err) {
+          Toast.danger('Correction failed: ' + err.message);
+        } finally {
+          btnCorrect.disabled = false;
+          btnCorrect.textContent = 'Suggest';
+        }
+      });
+    }
 
     // Section 2: Match Card with Signals & Alternatives
     if (item.topMatch) {
@@ -290,3 +398,4 @@ export async function ReviewQueueView() {
   renderTable();
   return container;
 }
+

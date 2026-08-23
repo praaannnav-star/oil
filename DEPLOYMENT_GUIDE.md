@@ -1,6 +1,7 @@
 # Oil India Limited — Deployment Guide (SIH26122)
 
-Current state: **fully functional offline-first PWA running on mock data** (`API.useMock = true`).
+Current state: **fully functional offline-first PWA running on mock data** (`API.useMock = true`),
+with the live Workers + D1 backend implemented in `worker/` and ready to deploy (§4).
 All domain data persists locally in IndexedDB; every workflow (capture → extract → match →
 review → reconcile → audit, surveys, evidence) works with zero backend.
 
@@ -78,20 +79,54 @@ by real auth before production (see roadmap).
 
 ---
 
-## 4. Backend Roadmap (Workers + D1 + Cloudinary + Workers AI)
+## 4. Backend — Workers API (implemented in `worker/`)
 
-The client already talks to an abstraction layer (`js/services/api.js`). Going live means
-flipping `useMock = false` and implementing these Worker routes — no view rewrites needed:
+The Cloudflare Workers + D1 backend now lives in **`worker/`**: router
+(`src/index.js`), route modules (`auth`, `projects`, `reports`, `reviews`,
+`evidence`, `surveys`, `classify`, `llm`), pinned LLM prompts
+(`src/prompts.js`), and the full schema (`schema.sql`). Zero npm dependencies —
+JWT, PBKDF2 password hashing and the audit hash chain are WebCrypto-native.
+
+Deploy:
+
+```bash
+cd worker
+npx wrangler d1 create oil-field-db        # paste the id into wrangler.toml
+npx wrangler d1 execute oil-field-db --remote --file=./schema.sql
+npx wrangler secret put JWT_SECRET
+npx wrangler secret put CLOUDINARY_API_SECRET   # optional (photo pipeline)
+npx wrangler deploy
+```
+
+Local dev: `cd worker && npx wrangler dev --local` (serves on :8787).
+
+The client already talks to an abstraction layer (`js/services/api.js`) plus the
+live transport adapter (`js/services/http.js`: Bearer auth, one silent refresh
+on 401, rotating refresh tokens in IndexedDB). Going live means flipping
+`useMock = false` in `api.js`; route surface mirrors every service method shape:
 
 | Route | Purpose | Notes |
 |---|---|---|
-| `POST /api/transcribe` | Field voice notes → text | Workers AI `@cf/openai/whisper`, en-IN prompt hint (fallback path already coded in `js/services/speech.js`) |
-| `POST /api/summarize` | Daily digest text | Replaces rules-based `summarizeDailyDigest` |
-| `POST /api/delay-cause` | Blocker text → cause enum | Feeds ExecutionMemory from live LLM classification |
-| `GET/POST /api/projects|activities|reports|surveys|evidence|review` | Domain CRUD | Mirror existing service method shapes |
-| `/api/audit/verify` | Hash-chain verification | Acceptance A7 |
+| `POST /api/auth/login|refresh|logout`, `GET /api/auth/me` | Live JWT sessions | Demo personas self-seed when `DEMO_MODE=1`; PBKDF2 hashes |
+| `GET/POST/PATCH /api/projects…` | Domain CRUD | Classification + geo columns per §4 of the plan; `/api/projects/:id/workspace` aggregate for detail tabs |
+| `GET/POST /api/reports` · `/api/reviews…` | Field reports + review queue | Approve runs server-side reconciliation (earned progress, finish variance, rollups) |
+| `/api/evidence/sign|confirm` | Cloudinary direct upload | Signed params only — API secret never leaves the Worker |
+| `GET/POST /api/surveys…` | Survey module | Templates seeded server-side (D1 default: SiteInspection + ProgressSurvey) |
+| `POST /api/classify` | Project/discipline suggestion | Rules first, LLM tie-breaker below 60% confidence |
+| `POST /api/extract|summarize|delay-cause` | Workers AI text endpoints | Temp-0, pinned prompts, provenance triples `{value, source, confidence}`, rules fallback on JSON drift |
+| `POST /api/transcribe` | Whisper ASR (`@cf/openai/whisper`, en-IN hint) | Activates the coded fallback path in `js/services/speech.js` |
+| `GET /api/audit` · `/api/audit/verify` | Hash-chained audit trail | Nightly cron re-verifies the chain and refreshes cached stats |
 
-### D1 migration sketch (first iteration)
+D1 schema highlights (full DDL in `worker/schema.sql`): `users`, `sessions`
+(rotating refresh rows), `projects(+classification+geo)`, `activities(+geo)`,
+`field_reports`, `extractions(provenance)`, `matches`, `reviews`, `surveys(+templates)`,
+`evidence(public_id)`, `audit_events(seq, prev_hash, payload_hash)`, `stats_cache`.
+
+### Reference schema
+
+The authoritative DDL now lives in `worker/schema.sql` (applied via
+`npx wrangler d1 execute oil-field-db --file=./schema.sql`). First-iteration
+sketch kept below for history:
 
 ```sql
 CREATE TABLE projects (

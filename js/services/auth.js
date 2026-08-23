@@ -19,7 +19,7 @@ export const DEMO_ACCOUNTS = [
     department: 'Projects Delivery Division',
     avatar: '👷',
     badgeClass: 'badge-in-progress',
-    allowedRoutes: ['/overview', '/manager', '/projects', '/projects/new', '/projects/:id', '/projects/:id/edit', '/schedule', '/activities/:id', '/review', '/surveys', '/evidence', '/analytics', '/memory', '/audit']
+    allowedRoutes: ['/overview', '/manager', '/projects', '/projects/new', '/projects/:id', '/projects/:id/edit', '/schedule', '/activities/:id', '/review', '/surveys', '/evidence', '/analytics', '/memory', '/audit', '/progress', '/progress/new']
   },
   {
     id: 'USR-ADMIN-01',
@@ -43,7 +43,7 @@ export const DEMO_ACCOUNTS = [
     department: 'Executive Directorate — Duliajan',
     avatar: '👔',
     badgeClass: 'badge-completed',
-    allowedRoutes: ['/overview', '/projects', '/projects/:id', '/schedule', '/activities/:id', '/evidence', '/analytics', '/memory', '/audit']
+    allowedRoutes: ['/overview', '/projects', '/projects/:id', '/schedule', '/activities/:id', '/evidence', '/analytics', '/memory', '/audit', '/progress', '/progress/new']
   },
   {
     id: 'USR-PLAN-01',
@@ -55,7 +55,7 @@ export const DEMO_ACCOUNTS = [
     department: 'Planning & Project Controls Division',
     avatar: '📐',
     badgeClass: 'badge-in-progress',
-    allowedRoutes: ['/overview', '/projects', '/projects/:id', '/schedule', '/activities/:id', '/review', '/surveys', '/evidence', '/analytics', '/memory', '/audit']
+    allowedRoutes: ['/overview', '/projects', '/projects/:id', '/schedule', '/activities/:id', '/review', '/surveys', '/evidence', '/analytics', '/memory', '/audit', '/progress', '/progress/new']
   },
   {
     id: 'USR-REV-01',
@@ -67,7 +67,7 @@ export const DEMO_ACCOUNTS = [
     department: 'Quality Assurance & Inspection Bureau',
     avatar: '🔍',
     badgeClass: 'badge-at-risk',
-    allowedRoutes: ['/overview', '/schedule', '/activities/:id', '/review', '/surveys', '/evidence', '/audit']
+    allowedRoutes: ['/overview', '/schedule', '/activities/:id', '/review', '/surveys', '/evidence', '/audit', '/progress', '/progress/new']
   },
   {
     id: 'USR-FIELD-01',
@@ -89,6 +89,22 @@ class AuthService {
   constructor() {
     this.currentUser = this.loadSession();
     this.listeners = new Set();
+  }
+
+  _triggerLiveLogin(username, password) {
+    if (this._syncTimeout) clearTimeout(this._syncTimeout);
+    this._syncTimeout = setTimeout(() => {
+      import('./http.js').then(({ ApiHttp }) => {
+        ApiHttp.login(username, password)
+          .then(() => {
+            // Once JWT is established, pull initial data!
+            return import('../sync.js').then(({ Sync }) => {
+              if (Sync.pullRemoteState) return Sync.pullRemoteState();
+            });
+          })
+          .catch(err => console.warn('Live API auth background sync:', err.message));
+      });
+    }, 100);
   }
 
   loadSession() {
@@ -142,6 +158,8 @@ class AuthService {
       if (byRole) {
         const userObj = { ...byRole, token: `mock-jwt-${Date.now()}` };
         this.saveSession(userObj);
+        // Silently authenticate with live backend
+        this._triggerLiveLogin(byRole.username, byRole.password);
         return { success: true, user: userObj };
       }
       return { success: false, error: 'Invalid username or password. (Demo password: password123)' };
@@ -149,21 +167,30 @@ class AuthService {
 
     const userObj = { ...account, token: `mock-jwt-${Date.now()}` };
     this.saveSession(userObj);
+
+    // Silently authenticate with live backend to establish JWT session
+    this._triggerLiveLogin(account.username, account.password);
+
     return { success: true, user: userObj };
   }
 
   quickLogin(roleOrUsername) {
     const target = DEMO_ACCOUNTS.find(
       acc => acc.role === roleOrUsername || acc.username === roleOrUsername || acc.role.toLowerCase().includes(roleOrUsername.toLowerCase())
-    ) || DEMO_ACCOUNTS[2]; // Default to Planner
+    ) || DEMO_ACCOUNTS[3]; // Default to Planner
 
     const userObj = { ...target, token: `mock-jwt-${Date.now()}` };
     this.saveSession(userObj);
+
+    // Silently authenticate with live backend to establish JWT session
+    this._triggerLiveLogin(target.username, target.password);
+
     return userObj;
   }
 
   logout() {
     this.saveSession(null);
+    import('./http.js').then(({ ApiHttp }) => ApiHttp.logout().catch(() => {}));
   }
 
   isAuthenticated() {

@@ -83,37 +83,103 @@ export async function ProjectDetailView(params = {}) {
 
   container.appendChild(kpiGrid);
 
-  // Site Location Map — Phase A: static OpenStreetMap embed (no Leaflet).
-  // Requires coordinates set via the project form; degrades gracefully offline.
-  if (project.lat && project.lng) {
-    const { lat, lng } = project;
+  // Site Location Map — Phase W3: OpenStreetMap embed + AI Geo Gazetteer Suggestion
+  const mapSectionWrapper = document.createElement('div');
+  mapSectionWrapper.className = 'card p-4 gap-3';
+
+  function renderMapSection() {
+    mapSectionWrapper.innerHTML = '';
+    const hasCoords = project.lat && project.lng;
+    const lat = project.lat || 27.3569;
+    const lng = project.lng || 95.3194;
     const d = 0.035; // ~7km bbox span
-    const mapCard = document.createElement('div');
-    mapCard.className = 'card p-4 gap-3';
-    mapCard.innerHTML = `
-      <div class="card-header p-0 mb-1">
-        <h3 class="card-title">Site Location</h3>
-        <span class="text-xs text-muted font-mono">${lat}, ${lng} • OpenStreetMap</span>
+
+    mapSectionWrapper.innerHTML = `
+      <div class="d-flex justify-between items-center flex-wrap gap-2 mb-1">
+        <div>
+          <h3 class="card-title">Site Location & Geospatial Pin</h3>
+          <span class="text-xs text-muted font-mono">${hasCoords ? `${project.lat}, ${project.lng} • OpenStreetMap` : 'No coordinates set'}</span>
+        </div>
+        <button id="btn-suggest-geo" class="btn btn-secondary btn-sm">
+          📍 Suggest Coordinates (AI & Gazetteer)
+        </button>
       </div>
-      <iframe
-        title="Project site location map"
-        class="map-embed"
-        src="https://www.openstreetmap.org/export/embed.html?bbox=${lng - d},${lat - d},${+lng + d},${+lat + d}&layer=mapnik&marker=${lat},${lng}"
-        loading="lazy"
-      ></iframe>
+
+      <div id="geo-candidates-mount" class="d-flex flex-col gap-2 d-none"></div>
+
+      ${hasCoords ? `
+        <iframe
+          title="Project site location map"
+          class="map-embed"
+          src="https://www.openstreetmap.org/export/embed.html?bbox=${lng - d},${lat - d},${+lng + d},${+lat + d}&layer=mapnik&marker=${lat},${lng}"
+          loading="lazy"
+        ></iframe>
+      ` : `
+        <div class="card p-3 text-center text-muted" style="background:var(--color-surface-hover);">
+          <p class="text-xs mb-0">No coordinates currently assigned to this project. Click <strong>Suggest Coordinates</strong> above to locate verified OIL facilities.</p>
+        </div>
+      `}
     `;
-    container.appendChild(mapCard);
-  } else {
-    const noMap = document.createElement('div');
-    noMap.className = 'card p-4 gap-2';
-    noMap.innerHTML = `
-      <div class="card-header p-0">
-        <h3 class="card-title">Site Location</h3>
-      </div>
-      <p class="text-xs text-muted">No coordinates set. Add latitude/longitude in Edit Project to show the site pin on an OpenStreetMap embed.</p>
-    `;
-    container.appendChild(noMap);
+
+    const btnSuggest = mapSectionWrapper.querySelector('#btn-suggest-geo');
+    const candidatesMount = mapSectionWrapper.querySelector('#geo-candidates-mount');
+
+    btnSuggest.addEventListener('click', async () => {
+      btnSuggest.disabled = true;
+      btnSuggest.textContent = 'Searching OIL Gazetteer...';
+      try {
+        const queryText = `${project.name} ${project.location || ''} ${project.code || ''}`;
+        const res = await ProjectsService.suggestLocation(queryText, project.id);
+        candidatesMount.innerHTML = '';
+        candidatesMount.classList.remove('d-none');
+
+        const candidates = res.candidates || [];
+        if (candidates.length === 0) {
+          candidatesMount.innerHTML = '<span class="text-xs text-muted p-2">No matching OIL facility found in gazetteer.</span>';
+          return;
+        }
+
+        const title = document.createElement('div');
+        title.className = 'text-xs font-bold text-muted uppercase';
+        title.textContent = `SUGGESTED OIL SITE PINS (${res.source.toUpperCase()})`;
+        candidatesMount.appendChild(title);
+
+        candidates.forEach(cand => {
+          const row = document.createElement('div');
+          row.className = 'd-flex justify-between items-center p-2 rounded';
+          row.style.background = 'var(--color-surface-hover)';
+          row.innerHTML = `
+            <div class="d-flex flex-col">
+              <div class="d-flex items-center gap-2">
+                <strong class="text-xs text-primary">${escapeHtml(cand.name)}</strong>
+                <span class="badge badge-in-progress" style="font-size:10px;">${cand.confidence}% Match</span>
+              </div>
+              <span class="text-xs text-muted font-mono">${cand.lat}, ${cand.lng} ${cand.chainageRef ? `• ${escapeHtml(cand.chainageRef)}` : ''}</span>
+            </div>
+            <button class="btn btn-primary btn-sm btn-confirm-pin">Confirm Pin</button>
+          `;
+
+          row.querySelector('.btn-confirm-pin').addEventListener('click', async () => {
+            project.lat = cand.lat;
+            project.lng = cand.lng;
+            await ProjectsService.setLocation(project.id, cand.lat, cand.lng);
+            Toast.success(`Confirmed site pin: ${cand.name}`);
+            renderMapSection();
+          });
+
+          candidatesMount.appendChild(row);
+        });
+      } catch (err) {
+        Toast.danger('Failed to fetch site suggestions: ' + err.message);
+      } finally {
+        btnSuggest.disabled = false;
+        btnSuggest.textContent = '📍 Suggest Coordinates (AI & Gazetteer)';
+      }
+    });
   }
+
+  renderMapSection();
+  container.appendChild(mapSectionWrapper);
 
   // Discipline Progress Breakdown & Delayed Activities Split View
   const splitGrid = document.createElement('div');

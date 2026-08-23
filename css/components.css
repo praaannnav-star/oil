@@ -1014,7 +1014,8 @@
 /* Public landing and project administration */
 .product-landing {
   min-height: 100vh;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   color: #F8FAFC;
   background: radial-gradient(circle at 80% 10%, rgba(224, 41, 29, 0.26), transparent 26rem), radial-gradient(circle at 10% 90%, rgba(245, 158, 11, 0.18), transparent 28rem), #070B12;
   position: relative;

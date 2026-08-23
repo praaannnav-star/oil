@@ -7,9 +7,9 @@
 //   node scripts/smoke.mjs [baseURL]     (default: http://localhost:8000)
 // Exit code 0 = all green, 1 = failures found.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 
 const base = (process.argv[2] || 'http://localhost:8000').replace(/\/$/, '');
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -69,5 +69,30 @@ try {
   console.log(`WARN  manifest.json unreadable: ${err.message}`);
 }
 
+// App-shell completeness: every js/css asset shipped in the repo must be
+// precached, otherwise an installed PWA breaks offline on first navigation.
+let drift = 0;
+try {
+  const shellSet = new Set(shell.map(p => '/' + p.replace(/^\.\//, '')));
+  for (const dir of ['js', 'css']) {
+    const absDir = join(repoRoot, dir);
+    const walk = (d) => {
+      for (const entry of readdirSync(d, { withFileTypes: true })) {
+        const full = join(d, entry.name);
+        if (entry.isDirectory()) { walk(full); continue; }
+        if (!/\.(js|css)$/.test(entry.name)) continue;
+        const rel = '/' + relative(repoRoot, full).split(/[\\/]/).join('/');
+        if (!shellSet.has(rel)) {
+          drift++;
+          console.log(`FAIL  ${rel} exists in repo but is NOT in APP_SHELL (offline cache drift)`);
+        }
+      }
+    };
+    walk(absDir);
+  }
+} catch (err) {
+  console.log(`WARN  could not audit APP_SHELL completeness: ${err.message}`);
+}
+
 console.log(`\n${results.length - failed}/${results.length} checks passed.`);
-process.exit(failed > 0 ? 1 : 0);
+process.exit(failed + drift > 0 ? 1 : 0);

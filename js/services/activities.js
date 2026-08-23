@@ -51,9 +51,18 @@ export const ActivitiesService = {
     const act = { ...API.activities[index] };
 
     const DAY_MS = 86400000;
-    const reportedStatus = (event?.status || '').toLowerCase();
-    // The verified observation date anchors all reconciliation math.
-    const reportDate = event?.date || new Date().toISOString().split('T')[0];
+    // A corrupted stored row ('abc', null, NaN) must normalize before any
+    // floor/hold math touches it — otherwise garbage propagates forever.
+    const prevProgress = Number.isFinite(Number(act.progress)) ? Number(act.progress) : 0;
+    act.progress = Math.min(100, Math.max(0, prevProgress));
+    // Non-string statuses (numbers, objects) must coerce, never crash.
+    const reportedStatus = String(event?.status ?? '').toLowerCase();
+    // The verified observation date anchors all reconciliation math. Only a
+    // plausible calendar date is trusted; anything else falls back to today
+    // so a corrupted capture can never inject NaN into schedule state.
+    const reportDate = /^\d{4}-\d{2}-\d{2}/.test(String(event?.date ?? ''))
+      ? String(event.date).slice(0, 10)
+      : new Date().toISOString().split('T')[0];
 
     // 1) Actual start: the first evidence-backed observation on this activity
     if (!act.actualStart) {
@@ -75,17 +84,20 @@ export const ActivitiesService = {
           const implied = Math.round(Math.min(95, Math.max(0, (elapsedMs / windowMs) * 100)));
           act.progress = reportedStatus.includes('delay')
             ? act.progress // blocked work: hold reported progress, flag status only
-            : Math.min(95, Math.max(act.progress, implied));
-        }
+            : Math.min(95, Math.max(act.progress, implied));        }
       }
       act.status = reportedStatus.includes('delay') || reportedStatus.includes('halt') || reportedStatus.includes('breakdown')
         ? 'delayed'
         : 'in-progress';
     }
 
-    // 2) Finish variance from real dates only (early finish => positive days)
+    // 2) Finish variance from real dates only (early finish => positive days).
+    //    Unparseable dates yield NaN — leave prior variance untouched instead.
     if (act.status === 'completed' && act.actualFinish && act.plannedFinish) {
-      act.variance = Math.round(((new Date(act.plannedFinish) - new Date(act.actualFinish)) / DAY_MS) * 10) / 10;
+      const varianceDays = (new Date(act.plannedFinish) - new Date(act.actualFinish)) / DAY_MS;
+      if (Number.isFinite(varianceDays)) {
+        act.variance = Math.round(varianceDays * 10) / 10;
+      }
     }
 
     act.reviewState = 'approved';

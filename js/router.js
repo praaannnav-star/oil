@@ -43,8 +43,8 @@ class Router {
 
   async handleRoute() {
     let rawHash = window.location.hash.slice(1) || '';
-    if (!rawHash) {
-      rawHash = Auth.isAuthenticated() ? '/overview' : '/';
+    if (!rawHash || rawHash.startsWith('landing-')) {
+      rawHash = '/';
     }
     const [pathPart] = rawHash.split('?');
     let path = pathPart.startsWith('/') ? pathPart : '/' + pathPart;
@@ -53,19 +53,22 @@ class Router {
     const isAuthed = Auth.isAuthenticated();
 
     if (!isAuthed && path !== '/login' && path !== '/') {
+      sessionStorage.setItem('oil_redirect_route', path);
       window.location.hash = '#/login';
       return;
     } else if (isAuthed && path === '/login') {
-      window.location.hash = '#/overview';
+      const redirect = sessionStorage.getItem('oil_redirect_route') || '/overview';
+      sessionStorage.removeItem('oil_redirect_route');
+      window.location.hash = '#' + redirect;
       return;
-    } else if (window.location.hash !== '#' + path) {
+    } else if (window.location.hash !== '#' + path && path !== '/') {
       if (window.location.hash === '#' || window.location.hash === '') {
         window.location.hash = '#' + path;
         return;
       }
     }
 
-    // Role-based route permission check (if authed and not login)
+    // Role-based route permission check (if authed and not login/landing)
     if (isAuthed && path !== '/login' && path !== '/') {
       if (!Auth.canAccess(path)) {
         const user = Auth.getUser();

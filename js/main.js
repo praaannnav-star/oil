@@ -35,10 +35,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 0. Hydrate persisted domain collections from IndexedDB before any view renders
   await API.init();
 
-  // 1. Initialize PWA & Offline & Sync subsystems
+  // 1. Initialize API HTTP session, PWA & Offline & Sync subsystems
+  try {
+    const { ApiHttp } = await import('./services/http.js');
+    await ApiHttp.init();
+  } catch (err) {
+    console.warn('ApiHttp initialization fallback:', err);
+  }
   await PWA.init();
   Offline.init();
   await Sync.init();
+
+  // If we are authenticated but have no projects locally, trigger a remote pull
+  if (Auth.getUser() && API.projects.length === 0 && !API.useMock) {
+    Sync.pullRemoteState().catch(e => console.warn('Initial remote pull failed', e));
+  }
 
   // 2. Register Routes
   AppRouter.register('/', LandingView);

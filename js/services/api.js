@@ -2,37 +2,22 @@
 // P1: all runtime collections are hydrated from IndexedDB on startup and
 // persisted (debounced) after every mutation, so state survives page refreshes.
 import { DB } from '../db.js';
-import { MOCK_PROJECTS } from '../data/mock-projects.js';
-import { MOCK_ACTIVITIES } from '../data/mock-activities.js';
-import { MOCK_REPORTS } from '../data/mock-reports.js';
-import { MOCK_EVIDENCE } from '../data/mock-evidence.js';
-import { MOCK_REVIEW_ITEMS } from '../data/mock-review.js';
-import { MOCK_AUDIT_LOG } from '../data/mock-audit.js';
 
 const COLLECTIONS = ['projects', 'activities', 'reports', 'evidence', 'reviewItems', 'auditLogs', 'surveys'];
-const SEEDS = {
-  projects: MOCK_PROJECTS,
-  activities: MOCK_ACTIVITIES,
-  reports: MOCK_REPORTS,
-  evidence: MOCK_EVIDENCE,
-  reviewItems: MOCK_REVIEW_ITEMS,
-  auditLogs: MOCK_AUDIT_LOG,
-  surveys: []
-};
 const PERSIST_DEBOUNCE_MS = 200;
 
 class ApiService {
   constructor() {
-    this.useMock = true; // Easily switched to false when Cloudflare Workers endpoint is configured
+    this.useMock = false; // Toggle to true to use IndexedDB local-only mode
     this.baseUrl = '/api';
 
-    // In-memory runtime state — hydrated in init() before first render
-    this.projects = JSON.parse(JSON.stringify(MOCK_PROJECTS));
-    this.activities = JSON.parse(JSON.stringify(MOCK_ACTIVITIES));
-    this.reports = JSON.parse(JSON.stringify(MOCK_REPORTS));
-    this.evidence = JSON.parse(JSON.stringify(MOCK_EVIDENCE));
-    this.reviewItems = JSON.parse(JSON.stringify(MOCK_REVIEW_ITEMS));
-    this.auditLogs = JSON.parse(JSON.stringify(MOCK_AUDIT_LOG));
+    // In-memory runtime state - hydrated in init() before first render
+    this.projects = [];
+    this.activities = [];
+    this.reports = [];
+    this.evidence = [];
+    this.reviewItems = [];
+    this.auditLogs = [];
     this.surveys = [];
 
     this._hydrated = false;
@@ -68,6 +53,7 @@ class ApiService {
   }
 
   async _hydrate() {
+    let hasData = false;
     for (const name of COLLECTIONS) {
       let stored = null;
       try {
@@ -78,14 +64,8 @@ class ApiService {
 
       if (Array.isArray(stored) && stored.length > 0) {
         this[name] = stored;
-      } else if (name === 'projects') {
-        // One-time migration from the pre-P1 localStorage persistence layer
-        const legacy = this.loadProjects();
-        this.projects = legacy;
-        await DB.saveEntity('projects', legacy);
+        hasData = true;
       }
-      // Empty-but-existing collections stay as seeded mocks and get written
-      // back lazily by persist() on the next mutation.
     }
     this._hydrated = true;
   }
@@ -176,3 +156,4 @@ class ApiService {
 }
 
 export const API = new ApiService();
+

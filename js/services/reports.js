@@ -13,8 +13,54 @@ export const ReportsService = {
     return list;
   },
 
+  async correctReport(reportId, notes) {
+    if (!API.useMock) {
+      const { ApiHttp } = await import('./http.js');
+      return await ApiHttp.request(`/reports/${reportId}/correct`, {
+        method: 'POST',
+        body: { notes }
+      });
+    }
+    // Mock implementation for local testing without worker
+    await API.delay(500);
+    const item = API.reports.find(r => r.id === reportId) || API.reviewItems.find(i => i.reportId === reportId);
+    if (!item) throw new Error('Report not found');
+    const evt = item.extractedEvent || JSON.parse(item.extracted_json || '{}');
+    const corrected = { ...evt }; // naive mock correction
+    return { event: corrected, source: 'llm-correct' };
+  },
+
   // Intelligent Extraction Layer (Extracts structured operational entities from transcript)
-  async extractEvent(transcript) {
+  async extractEvent(input) {
+    // Field devices and sync replays can deliver numbers/objects/null here;
+    // coerce once so neither the live path nor rules engine ever crashes.
+    const transcript = typeof input === 'string'
+      ? input
+      : input == null ? '' : String(input);
+
+    if (!API.useMock) {
+      try {
+        const { ApiHttp } = await import('./http.js');
+        const res = await ApiHttp.request('/extract', {
+          method: 'POST',
+          body: { transcript }
+        });
+        if (res && res.event) {
+          return {
+            discipline: res.event.discipline || 'Civil',
+            activity: res.event.activity || transcript.slice(0, 70),
+            assetTag: res.event.assetTag || 'General Area',
+            capturedAt: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }) + ' IST',
+            status: res.event.status || 'In Progress',
+            blocker: res.event.blocker || 'None',
+            date: res.event.date || new Date().toISOString().split('T')[0]
+          };
+        }
+      } catch (err) {
+        console.warn('Live AI extraction fallback to rules engine:', err.message);
+      }
+    }
+
     await API.delay(300); // realistic AI extraction pause
     const lower = (transcript || '').toLowerCase();
 
@@ -81,8 +127,9 @@ export const ReportsService = {
   async matchActivity(extractedEvent, candidateActivities = null) {
     await API.delay(200);
     const pool = candidateActivities || API.activities;
-    const lowerAct = (extractedEvent.activity || '').toLowerCase();
-    const lowerTag = (extractedEvent.assetTag || '').toLowerCase();
+    const ev = extractedEvent || {};
+    const lowerAct = String(ev.activity ?? '').toLowerCase();
+    const lowerTag = String(ev.assetTag ?? '').toLowerCase();
 
     // Score all L5/L6 activities
     const scored = pool
@@ -90,9 +137,12 @@ export const ReportsService = {
       .map(act => {
         let score = 30; // base score
         const signals = [];
+        const actCode = String(act.code ?? '').toLowerCase();
+        const actName = String(act.name ?? '').toLowerCase();
+        const evDiscipline = String(ev.discipline ?? '').toLowerCase();
 
         // Discipline match
-        if (act.discipline.toLowerCase() === extractedEvent.discipline.toLowerCase()) {
+        if (String(act.discipline ?? '').toLowerCase() === evDiscipline) {
           score += 25;
           signals.push({ label: `Discipline matches (${act.discipline})`, match: true });
         } else {
@@ -100,8 +150,6 @@ export const ReportsService = {
         }
 
         // Asset code/tag match
-        const actCode = act.code.toLowerCase();
-        const actName = act.name.toLowerCase();
         if (lowerTag.includes('b2') && (actCode.includes('b2') || actName.includes('b2'))) {
           score += 35;
           signals.push({ label: 'Asset identifier verified (Foundation B2)', match: true });
@@ -156,7 +204,6 @@ export const ReportsService = {
   },
 
   async submitReport(reportData) {
-    await API.delay();
     const newReport = {
       id: `REP-${Date.now()}`,
       projectId: reportData.projectId || 'PRJ-OIL-2026-01',
@@ -169,78 +216,42 @@ export const ReportsService = {
       matchedActivityCode: reportData.matchedActivity?.code,
       confidence: reportData.confidence || 90,
       signals: reportData.signals || [],
-      status: reportData.isOffline ? 'pending-sync' : 'pending-review',
+      status: navigator.onLine ? 'pending-sync' : 'pending-sync',
       reviewer: null,
       reviewedAt: null,
       evidenceItems: reportData.evidenceItems || [],
       evidenceIds: []
     };
 
-    if (reportData.isOffline) {
-      // Photos ride along inside the queued report and are promoted to real
-      // evidence records when SyncManager processes the item.
-      await DB.addPendingReport(newReport);
-    } else {
-      API.reports.unshift(newReport);
-      API.persist('reports');
+    // Always queue through local DB to ensure durability
+    await DB.addPendingReport(newReport);
 
-      // Persist attached photos as first-class evidence records linked to
-      // both the report and the matched schedule activity.
-      const evidenceIds = [];
-      for (const ev of (reportData.evidenceItems || [])) {
-        const saved = await EvidenceService.addEvidence({
-          ...ev,
-          reportId: newReport.id,
-          activityId: newReport.matchedActivityId || null,
-          projectId: newReport.projectId
-        });
-        evidenceIds.push(saved.id);
-      }
-      if (evidenceIds.length > 0) {
-        newReport.evidenceIds = evidenceIds;
-        API.persist('reports');
-      }
-
-      // Also create a review item
-      const reviewItem = {
-        id: `REV-${Date.now()}`,
-        reportId: newReport.id,
-        source: 'Mobile Field App',
-        reporter: newReport.author,
-        discipline: newReport.extractedEvent.discipline,
-        extractedEvent: newReport.extractedEvent,
-        topMatch: reportData.matchedActivity ? {
-          ...reportData.matchedActivity,
-          confidence: reportData.confidence,
-          signals: reportData.signals
-        } : null,
-        alternatives: reportData.alternatives || [],
-        state: 'needs-review',
-        tabCategory: reportData.confidence >= 80 ? 'high-confidence' : 'needs-review',
-        reviewer: null,
-        reviewedAt: null,
-        age: 'Just now'
-      };
-      API.reviewItems.unshift(reviewItem);
-      API.persist('reviewItems');
-
-      // Audit trail
-      await AuditService.appendAudit({
-        activityId: newReport.matchedActivityId || 'GENERAL',
-        action: 'Field Progress Report Submitted',
-        actor: newReport.author,
-        role: 'Field Staff',
-        detail: `Report: "${newReport.rawTranscript.slice(0, 100)}..." Linked with ${newReport.confidence}% confidence.`
+    // If online, immediately trigger the sync engine to push to backend
+    if (navigator.onLine) {
+      import('../sync.js').then(({ Sync }) => {
+        if (Sync.syncPending) Sync.syncPending().catch(e => console.warn('Background sync failed:', e));
       });
     }
 
     return newReport;
   },
 
-  // Normalize free blocker text into a cause enum. Rules-based today; swaps
-  // to POST /api/delay-cause (Workers AI) when the live endpoint lands.
+  // Normalize free blocker text into a cause enum via Workers AI / rules
   async classifyDelayCause(text) {
-    const lower = (text || '').toLowerCase();
+    if (!API.useMock && text && text !== 'None') {
+      try {
+        const { ApiHttp } = await import('./http.js');
+        const res = await ApiHttp.request('/delay-cause', {
+          method: 'POST',
+          body: { text }
+        });
+        if (res && res.code) return res;
+      } catch (err) {
+        console.warn('Live delay-cause classification fallback:', err.message);
+      }
+    }
+
+    const lower = String(text ?? '').toLowerCase();
     const rules = [
       { code: 'WEATHER', label: 'Weather / Rainfall Interruption', keys: ['rain', 'monsoon', 'weather', 'storm', 'flood'] },
       { code: 'MATERIAL_SHORTAGE', label: 'Material / Parts Shortage', keys: ['shortage', 'material', 'stock', 'supply', 'gland', 'cement'] },
@@ -308,10 +319,11 @@ export const ReportsService = {
     const openBlockers = reports.filter(r => r.extractedEvent?.blocker && r.extractedEvent.blocker !== 'None');
     if (openBlockers.length > 0) {
       const latest = openBlockers[0];
+      const quote = String(latest.rawTranscript ?? '');
       signals.push({
         tone: 'danger',
         headline: `${openBlockers.length} BLOCKER REPORT${openBlockers.length > 1 ? 'S' : ''}`,
-        detail: `"${latest.rawTranscript.slice(0, 80)}${latest.rawTranscript.length > 80 ? '...' : ''}" — ${latest.author}`
+        detail: `"${quote.slice(0, 80)}${quote.length > 80 ? '...' : ''}" — ${latest.author ?? 'Unknown'}`
       });
     }
 

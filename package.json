@@ -1,0 +1,18 @@
+{
+  "name": "oil-india-field-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Oil India Limited — Field to Schedule Bridge (SIH26122) Full-Stack Cloudflare Deployment",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "test": "node scripts/smoke.mjs http://localhost:8000",
+    "test:live": "node scripts/smoke.mjs https://master.oil-bridge-pwa.pages.dev",
+    "deploy:all": "node scripts/deploy-cloudflare.mjs",
+    "deploy:worker": "cd worker && npx wrangler deploy",
+    "deploy:pages": "node scripts/deploy-cloudflare.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

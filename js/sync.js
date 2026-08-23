@@ -1,7 +1,6 @@
 // Background Sync Manager for Offline Field Reports
 import { DB } from './db.js';
 import { API } from './services/api.js';
-import { EvidenceService } from './services/evidence.js';
 import { State } from './state.js';
 import { Toast } from './components/Toast.js';
 
@@ -11,10 +10,8 @@ class SyncManager {
   }
 
   async init() {
-    // Check pending count on launch
     await this.updatePendingCount();
 
-    // Auto sync when coming back online
     window.addEventListener('online', () => {
       this.syncPending();
     });
@@ -24,6 +21,44 @@ class SyncManager {
     const pending = await DB.getPendingReports();
     State.setPendingCount(pending.length);
     return pending.length;
+  }
+
+  async pullRemoteState() {
+    if (!navigator.onLine) return;
+    
+    // dynamically load ApiHttp to avoid circular dependencies during initialization
+    const { ApiHttp } = await import('./services/http.js');
+
+    try {
+      // Fetch all collections from the backend
+      const [projects, activities, reports, reviewItems, surveys] = await Promise.all([
+        ApiHttp.request('/projects'),
+        ApiHttp.request('/activities'),
+        ApiHttp.request('/reports'),
+        ApiHttp.request('/reviews'),
+        ApiHttp.request('/surveys')
+      ]);
+
+      // Update in-memory state
+      API.projects = projects || [];
+      API.activities = activities || [];
+      API.reports = reports || [];
+      API.reviewItems = reviewItems || [];
+      API.surveys = surveys || [];
+
+      // Update local storage
+      API.persist('projects', true);
+      API.persist('activities', true);
+      API.persist('reports', true);
+      API.persist('reviewItems', true);
+      API.persist('surveys', true);
+
+      console.log('Successfully pulled remote state into local IndexedDB cache.');
+      API._hydrated = true;
+      State.notify(); // Re-render application with fetched data
+    } catch (err) {
+      console.warn('Failed to pull remote state from backend:', err);
+    }
   }
 
   async syncPending() {
@@ -36,93 +71,48 @@ class SyncManager {
     State.setConnectionStatus('syncing');
     Toast.info(`Syncing ${pending.length} offline report(s) to schedule database...`);
 
+    const { ApiHttp } = await import('./services/http.js');
     let successCount = 0;
+
     for (const report of pending) {
       try {
         if (report.type === 'survey') {
-          // Offline survey promotion
-          API.surveys.unshift({ ...report, status: 'submitted', syncedAt: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST' });
-          API.reviewItems.unshift({
-            id: `REV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-            reportId: report.id,
-            source: `Survey (Offline Synced) — ${report.templateName || 'Field Survey'}`,
-            reporter: report.submittedBy,
-            discipline: 'HSE / Progress',
-            extractedEvent: { activity: report.templateName || 'Survey submission', status: 'Submitted', blocker: 'None' },
-            topMatch: null,
-            alternatives: [],
-            surveyAnswers: report.answers || {},
-            state: 'needs-review',
-            tabCategory: 'needs-review',
-            reviewer: null,
-            reviewedAt: null,
-            age: 'Just now'
+          // Push survey to backend
+          await ApiHttp.request('/surveys', {
+            method: 'POST',
+            body: {
+              ...report,
+              isOffline: true
+            }
           });
           await DB.removePendingReport(report.id);
           successCount++;
           continue;
         }
 
-        // Promote queued photos into first-class linked evidence records
-        const evidenceIds = [];
-        for (const ev of (report.evidenceItems || [])) {
-          const saved = await EvidenceService.addEvidence({
-            ...ev,
-            reportId: report.id,
-            activityId: report.matchedActivityId || null,
-            projectId: report.projectId
-          });
-          evidenceIds.push(saved.id);
-        }
-
-        // Push to server state
-        API.reports.unshift({
-          ...report,
-          evidenceIds,
-          status: 'pending-review',
-          syncedAt: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST'
+        // Push report to backend
+        await ApiHttp.request('/reports', {
+          method: 'POST',
+          body: {
+            ...report,
+            isOffline: true
+          }
         });
-
-        // Add to review items
-        API.reviewItems.unshift({
-          id: `REV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          reportId: report.id,
-          source: 'Field PWA (Offline Synced)',
-          reporter: report.author,
-          discipline: report.extractedEvent?.discipline || 'Civil',
-          extractedEvent: report.extractedEvent,
-          topMatch: report.matchedActivityId ? {
-            id: report.matchedActivityId,
-            code: report.matchedActivityCode,
-            name: report.matchedActivityName,
-            discipline: report.extractedEvent?.discipline || 'Civil',
-            confidence: report.confidence || 90,
-            signals: report.signals || []
-          } : null,
-          alternatives: [],
-          state: 'needs-review',
-          tabCategory: 'needs-review',
-          reviewer: null,
-          reviewedAt: null,
-          age: 'Just now'
-        });
-
         await DB.removePendingReport(report.id);
-        successCount++;      } catch (err) {
+        successCount++;
+      } catch (err) {
         console.error('Failed to sync item:', report.id, err);
       }
     }
 
     this.isSyncing = false;
     State.setConnectionStatus('online');
-    API.persist('reports', true);
-    API.persist('reviewItems', true);
-    API.persist('evidence', true);
-    API.persist('surveys', true);
     await this.updatePendingCount();
 
     if (successCount > 0) {
       Toast.success(`Successfully synchronized ${successCount} field report(s)!`);
+      // Pull latest state from backend to get the finalized review items
+      await this.pullRemoteState();
     }
   }
 }
