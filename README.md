@@ -101,3 +101,4 @@ Double-click `start-server.bat` in the project root.
 6. Switch to the **Review Queue** (`#/review`), select the new report, and click **"Approve & Reconcile Schedule"**.
 7. Navigate to **Schedule Explorer** (`#/schedule`) or **Activity Detail** to see actuals updated, variance calculated (+2 days), and corrective actions logged.
 8. View **Executive Overview** (`#/overview`) to see updated portfolio metrics.
+# oil
