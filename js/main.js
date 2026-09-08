@@ -1,6 +1,6 @@
 import { AppRouter } from './router.js';
 import { State } from './state.js';
-import { Auth, DEMO_ACCOUNTS } from './services/auth.js';
+import { Auth } from './services/auth.js';
 import { SessionManager } from './services/session-manager.js';
 import { Offline } from './offline.js';
 import { Sync } from './sync.js';
@@ -41,24 +41,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   ]);
 
   // 1. Initialize API HTTP session, PWA & Offline & Sync subsystems
-  if (!API.useMock) {
-    try {
-      const { ApiHttp } = await import('./services/http.js');
-      await ApiHttp.init();
-      // Fetch fresh session state if authenticated
-      if (Auth.isAuthenticated()) {
-        await SessionManager.fetchAndApplySession();
-      }
-    } catch (err) {
-      console.warn('ApiHttp initialization fallback:', err);
+  try {
+    const { ApiHttp } = await import('./services/http.js');
+    await ApiHttp.init();
+    // Fetch fresh session state if authenticated
+    if (Auth.isAuthenticated()) {
+      await SessionManager.fetchAndApplySession();
     }
+  } catch (err) {
+    console.warn('ApiHttp initialization fallback:', err);
   }
   await awaitStartup(PWA.init(), 'PWA registration');
   Offline.init();
   await awaitStartup(Sync.init(), 'offline sync initialization');
 
   // If we are authenticated but have no projects locally, trigger a remote pull
-  if (Auth.getUser() && API.projects.length === 0 && !API.useMock) {
+  if (Auth.getUser() && API.projects.length === 0) {
     Sync.pullRemoteState().catch(e => console.warn('Initial remote pull failed', e));
   }
 
@@ -123,16 +121,6 @@ function setupHeaderControls() {
       State.setProject(e.target.value);
       Toast.info(`Switched project context: ${e.target.selectedOptions[0].text}`);
       AppRouter.handleRoute(); // refresh current view with new project
-    });
-  }
-
-  // Demo Reset Button (Jury Scenario Reset)
-  const demoResetBtn = document.getElementById('btn-demo-reset');
-  if (demoResetBtn) {
-    demoResetBtn.addEventListener('click', () => {
-      API.resetDemoData();
-      Toast.success('Project data reset to baseline.');
-      AppRouter.handleRoute();
     });
   }
 

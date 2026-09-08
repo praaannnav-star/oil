@@ -24,6 +24,17 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 
+CREATE TABLE IF NOT EXISTS project_assignments (
+  id          TEXT PRIMARY KEY,
+  project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  user_id     TEXT NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
+  discipline  TEXT NOT NULL,
+  assigned_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(project_id, user_id, discipline)
+);
+CREATE INDEX IF NOT EXISTS idx_assignments_project ON project_assignments(project_id);
+CREATE INDEX IF NOT EXISTS idx_assignments_user    ON project_assignments(user_id);
+
 CREATE TABLE IF NOT EXISTS projects (
   id           TEXT PRIMARY KEY,
   code         TEXT UNIQUE,

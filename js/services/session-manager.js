@@ -1,7 +1,7 @@
 // Session Framework for role-based authentication lifecycle.
-// Handles session TTL, auto-logout, token rotation checks, and multi-role swapping.
+// Handles session TTL, auto-logout, token rotation checks, and live session sync.
 
-import { Auth, USER_ROLES, DEMO_ACCOUNTS } from './auth.js';
+import { Auth, USER_ROLES } from './auth.js';
 import { ApiHttp } from './http.js';
 import { Toast } from '../components/Toast.js';
 
@@ -37,9 +37,6 @@ export class SessionManager {
   static async fetchAndApplySession() {
     if (!Auth.isAuthenticated() || !window.navigator.onLine) return false;
     try {
-      const { API } = await import('./api.js');
-      if (API.useMock) return false;
-
       const res = await ApiHttp.request('/auth/me');
       if (res && res.user) {
         Auth.saveSession(res.user);
@@ -47,7 +44,7 @@ export class SessionManager {
       }
       throw new Error('Session Invalidated');
     } catch (e) {
-      if (e.status === 401 || String(e.message).toLowerCase().includes('invalid')) {
+      if (e.status === 401 || String(e.message).toLowerCase().includes('invalid') || String(e.message).toLowerCase().includes('expired')) {
         console.warn('[SessionManager] Session expired or revoked. Logging out.');
         Toast.show('Session expired. Please log in again.', 'warning');
         this.logout();
@@ -65,29 +62,10 @@ export class SessionManager {
   }
 
   /**
-   * Switch roles dynamically - useful for testing all roles in the project.
-   */
-  static async switchRole(roleName) {
-    Toast.show(`Switching session to ${roleName}...`);
-    // Best-effort logout of current session
-    await this.logout(false); 
-    
-    const res = Auth.quickLogin(roleName);
-    if (res && res.username) {
-      Toast.show(`Session established as ${res.name} (${res.role})`, 'success');
-      // Hard reload to reset all app state and DB caches
-      window.location.hash = '#/overview';
-      setTimeout(() => window.location.reload(), 500);
-      return true;
-    }
-    return false;
-  }
-
-  /**
    * Framework entry for standard login
    */
   static async login(username, password) {
-    const res = Auth.login(username, password);
+    const res = await Auth.login(username, password);
     if (res.success) {
       this.startMonitoring();
     }
@@ -111,13 +89,6 @@ export class SessionManager {
    */
   static getAvailableRoles() {
     return Object.values(USER_ROLES);
-  }
-
-  /**
-   * Get all mock persona credentials
-   */
-  static getRolePersonas() {
-    return DEMO_ACCOUNTS;
   }
 }
 

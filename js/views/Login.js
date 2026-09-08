@@ -1,5 +1,4 @@
-// Animated Oil India Limited Petroleum Landing & Role Authentication Page
-import { Auth, DEMO_ACCOUNTS } from '../services/auth.js';
+// Animated Oil India Limited Petroleum Landing & Enterprise Authentication Page
 import { SessionManager } from '../services/session-manager.js';
 import { State } from '../state.js';
 import { AppRouter } from '../router.js';
@@ -65,43 +64,21 @@ export function LoginView() {
         </div>
       </div>
 
-      <!-- Right Login Card: Authentication & 1-Click Jury Personas -->
+      <!-- Right Login Card: Enterprise Authentication Form -->
       <div class="login-card-pane">
         <div class="login-glass-card">
           <div class="card-header-section">
             <h3 class="card-title">Operations Sign In</h3>
-            <p class="card-subtitle">Select a persona or enter enterprise credentials</p>
+            <p class="card-subtitle">Enter your Oil India enterprise credentials</p>
           </div>
 
-          <!-- Fast 1-Click Persona Switcher for SIH Evaluation -->
-          <div class="fast-persona-section">
-            <div class="persona-section-label">
-              <span>JURY 1-CLICK PERSONA LOGIN:</span>
-            </div>
-            <div class="persona-grid">
-              ${DEMO_ACCOUNTS.map(acc => `
-                <button type="button" class="btn-persona-tile" data-role="${acc.role}" data-username="${acc.username}">
-                  <span class="persona-avatar">${acc.avatar}</span>
-                  <div class="persona-info">
-                    <span class="persona-name">${acc.name}</span>
-                    <span class="persona-role">${acc.role}</span>
-                  </div>
-                </button>
-              `).join('')}
-            </div>
-          </div>
-
-          <div class="login-divider">
-            <span>OR ENTER USERNAME & PASSWORD</span>
-          </div>
-
-          <!-- Standard Credentials Form -->
+          <!-- Enterprise Credentials Form -->
           <form id="login-form" class="login-form">
             <div class="form-group">
               <label for="input-username" class="form-label">Username</label>
               <div class="input-with-icon">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                <input type="text" id="input-username" class="form-input" placeholder="e.g. planner, executive, admin, supervisor" value="planner" required autocomplete="username">
+                <input type="text" id="input-username" class="form-input" placeholder="Enter username (e.g. planner, admin)" required autocomplete="username">
               </div>
             </div>
 
@@ -109,9 +86,8 @@ export function LoginView() {
               <label for="input-password" class="form-label">Password</label>
               <div class="input-with-icon">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                <input type="password" id="input-password" class="form-input" placeholder="••••••••" value="password123" required autocomplete="current-password">
+                <input type="password" id="input-password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
               </div>
-              <span class="text-xs text-muted mt-1">Default demo password: <code>password123</code></span>
             </div>
 
             <div id="login-error-box" class="login-error-alert d-none"></div>
@@ -123,7 +99,7 @@ export function LoginView() {
           </form>
 
           <div class="card-footer-meta">
-            <span>Oil India Limited Enterprise Operations • PWA v1.2</span>
+            <span>Oil India Limited Enterprise Operations • PWA</span>
           </div>
         </div>
       </div>
@@ -140,36 +116,42 @@ export function LoginView() {
     }
   }, 20);
 
-  // Setup Persona Click Handlers
-  container.querySelectorAll('.btn-persona-tile').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const role = btn.getAttribute('data-role');
-      const success = await SessionManager.switchRole(role);
-      if (success) {
-        // Navigation is handled by SessionManager.switchRole reload
-      }
-    });
-  });
-
   // Setup Form Submission
   const form = container.querySelector('#login-form');
   const errorBox = container.querySelector('#login-error-box');
+  const submitBtn = form.querySelector('#btn-login-submit');
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const username = container.querySelector('#input-username').value;
+    const username = container.querySelector('#input-username').value.trim();
     const password = container.querySelector('#input-password').value;
 
-    const result = await SessionManager.login(username, password);
-    if (result.success) {
-      errorBox.classList.add('d-none');
-      State.setRole(result.user.role);
-      Toast.success(`Welcome, ${result.user.name}! Access Granted.`);
-      AppRouter.navigate(getPostLoginRoute());
-    } else {
-      errorBox.textContent = result.error;
+    errorBox.classList.add('d-none');
+    submitBtn.disabled = true;
+    const originalBtnHtml = submitBtn.innerHTML;
+    submitBtn.innerHTML = `
+      <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+      <span>Authenticating...</span>
+    `;
+
+    try {
+      const result = await SessionManager.login(username, password);
+      if (result.success) {
+        State.setRole(result.user.role);
+        Toast.success(`Welcome, ${result.user.name}! Access Granted.`);
+        AppRouter.navigate(getPostLoginRoute());
+      } else {
+        errorBox.textContent = result.error || 'Invalid credentials. Please verify username and password.';
+        errorBox.classList.remove('d-none');
+        Toast.danger('Authentication failed. Please verify credentials.');
+      }
+    } catch (err) {
+      errorBox.textContent = err.message || 'An error occurred during authentication.';
       errorBox.classList.remove('d-none');
-      Toast.danger('Authentication failed. Please verify credentials.');
+      Toast.danger('Network error or server unavailable.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnHtml;
     }
   });
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'oil-tracker-v6';
+const CACHE_NAME = 'oil-tracker-v7';
 const APP_SHELL = [
   './',
   './index.html',
@@ -34,13 +34,6 @@ const APP_SHELL = [
   './js/services/analytics.js',
   './js/services/speech.js',
   './js/services/surveys.js',
-  './js/data/mock-projects.js',
-  './js/data/mock-activities.js',
-  './js/data/mock-reports.js',
-  './js/data/mock-evidence.js',
-  './js/data/mock-review.js',
-  './js/data/mock-audit.js',
-  './js/data/survey-templates.js',
   './js/components/Badge.js',
   './js/components/Button.js',
   './js/components/Card.js',

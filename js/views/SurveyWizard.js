@@ -1,6 +1,5 @@
 // Survey capture wizard — template selection, guided questions with voice
 // dictation and photo evidence, geo auto-tag, offline-aware submission (A6).
-import { SURVEY_TEMPLATES } from '../data/survey-templates.js';
 import { SurveyService } from '../services/surveys.js';
 import { Speech } from '../services/speech.js';
 import { State } from '../state.js';
@@ -99,9 +98,11 @@ export async function SurveyWizardView() {
     }
   }
 
-  function renderTemplateStep() {
+  async function renderTemplateStep() {
+    body.innerHTML = '<div class="p-3 text-muted text-sm font-mono">Loading survey templates...</div>';
+    const templates = await SurveyService.getTemplates();
     body.innerHTML = '';
-    SURVEY_TEMPLATES.forEach(tpl => {
+    templates.forEach(tpl => {
       const card = document.createElement('article');
       card.className = 'project-card';
       card.innerHTML = `
@@ -109,7 +110,7 @@ export async function SurveyWizardView() {
           <span style="font-size:1.6rem;">${tpl.icon}</span>
           <div class="d-flex flex-col gap-1">
             <strong class="text-sm text-primary">${escapeHtml(tpl.name)}</strong>
-            <span class="text-xs text-secondary">${escapeHtml(tpl.description)} · ${tpl.questions.length} questions</span>
+            <span class="text-xs text-secondary">${escapeHtml(tpl.description)} · ${(tpl.questions || []).length} questions</span>
           </div>
         </div>
       `;

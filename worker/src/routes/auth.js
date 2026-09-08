@@ -128,5 +128,111 @@ export default [
       const fresh = await db.prepare('SELECT * FROM users WHERE id = ?').bind(user.sub).first();
       return json({ user: fresh ? toClientUser(fresh) : null });
     }
+  },
+  {
+    method: 'GET',
+    pattern: '/api/users',
+    opts: { auth: true },
+    async handler({ user, db }) {
+      if (user.role !== 'Admin') return err(403, 'Admin access required');
+      const { results } = await db.prepare('SELECT * FROM users ORDER BY name ASC').all();
+      return json((results || []).map(toClientUser));
+    }
+  },
+  {
+    method: 'POST',
+    pattern: '/api/users',
+    opts: { auth: true },
+    async handler({ user, body, db }) {
+      if (user.role !== 'Admin') return err(403, 'Admin access required');
+      const username = String(body?.username || '').trim().toLowerCase();
+      const password = String(body?.password || '');
+      const name = String(body?.name || '').trim();
+      const role = String(body?.role || 'Field Supervisor').trim();
+      const title = String(body?.title || '').trim();
+      const department = String(body?.department || 'Operations').trim();
+      const avatar = String(body?.avatar || (role.includes('Supervisor') ? '👷‍♂️' : role.includes('Manager') ? '👷' : role.includes('Admin') ? '👨‍💼' : '📐')).trim();
+      const allowedRoutes = Array.isArray(body?.allowedRoutes) ? body.allowedRoutes : [];
+
+      if (!username || !password || !name) {
+        return err(400, 'Username, password, and full name are required');
+      }
+      if (password.length < 6) {
+        return err(400, 'Password must be at least 6 characters long');
+      }
+
+      const existing = await db.prepare('SELECT id FROM users WHERE lower(username) = ?').bind(username).first();
+      if (existing) {
+        return err(409, `Username "${username}" is already taken`);
+      }
+
+      const hash = await hashPassword(password);
+      const rolePrefix = role.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase() || 'USER';
+      const id = `USR-${rolePrefix}-${Date.now().toString().slice(-4)}`;
+
+      await db.prepare(
+        `INSERT INTO users (id, username, password_hash, name, title, role, department, avatar, allowed_routes_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        id, username, hash, name, title, role, department, avatar, JSON.stringify(allowedRoutes)
+      ).run();
+
+      const created = await db.prepare('SELECT * FROM users WHERE id = ?').bind(id).first();
+      return json(toClientUser(created), 201);
+    }
+  },
+  {
+    method: 'PATCH',
+    pattern: '/api/users/:id',
+    opts: { auth: true },
+    async handler({ user, params, body, db }) {
+      if (user.role !== 'Admin') return err(403, 'Admin access required');
+      const target = await db.prepare('SELECT * FROM users WHERE id = ?').bind(params.id).first();
+      if (!target) return err(404, 'User not found');
+
+      const name = body?.name !== undefined ? String(body.name).trim() : target.name;
+      const title = body?.title !== undefined ? String(body.title).trim() : target.title;
+      const role = body?.role !== undefined ? String(body.role).trim() : target.role;
+      const department = body?.department !== undefined ? String(body.department).trim() : target.department;
+      const avatar = body?.avatar !== undefined ? String(body.avatar).trim() : target.avatar;
+      const allowedRoutes = Array.isArray(body?.allowedRoutes) ? body.allowedRoutes : JSON.parse(target.allowed_routes_json || '[]');
+
+      let hash = target.password_hash;
+      if (body?.password && String(body.password).trim().length > 0) {
+        const pass = String(body.password).trim();
+        if (pass.length < 6) return err(400, 'New password must be at least 6 characters long');
+        hash = await hashPassword(pass);
+      }
+
+      await db.prepare(
+        `UPDATE users SET name = ?, title = ?, role = ?, department = ?, avatar = ?, allowed_routes_json = ?, password_hash = ? WHERE id = ?`
+      ).bind(
+        name, title, role, department, avatar, JSON.stringify(allowedRoutes), hash, params.id
+      ).run();
+
+      const updated = await db.prepare('SELECT * FROM users WHERE id = ?').bind(params.id).first();
+      return json(toClientUser(updated));
+    }
+  },
+  {
+    method: 'DELETE',
+    pattern: '/api/users/:id',
+    opts: { auth: true },
+    async handler({ user, params, db }) {
+      if (user.role !== 'Admin') return err(403, 'Admin access required');
+      if (user.sub === params.id) return err(400, 'Cannot delete your own active administrator account');
+
+      const target = await db.prepare('SELECT * FROM users WHERE id = ?').bind(params.id).first();
+      if (!target) return err(404, 'User not found');
+
+      // Revoke sessions
+      await db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(params.id).run();
+      // Clean up project assignments if any
+      await db.prepare('DELETE FROM project_assignments WHERE user_id = ?').bind(params.id).run();
+      // Delete user
+      await db.prepare('DELETE FROM users WHERE id = ?').bind(params.id).run();
+
+      return json({ ok: true, deleted: params.id });
+    }
   }
 ];

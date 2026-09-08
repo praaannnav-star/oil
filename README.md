@@ -73,6 +73,16 @@ Open your terminal in the project folder and run:
 ```bash
 python -m http.server 8000
 ```
-Then open your browser and go to: **http://localhost:8000/#/login**
+## 🔐 Enterprise Role-Based User Accounts
 
-*(Tip: Click the "1-Click Persona Login" cards on the landing page to instantly test the different role-based views!)*
+All accounts are pre-seeded in the Cloudflare D1 database:
+
+| Username | Password | Role | Persona Name & Title | Authorized Views |
+|---|---|---|---|---|
+| `planner` | `password123` | **Planner** | Rajesh Baruah (Lead Schedule & Planning Engineer) | Dashboard, Projects, Schedule Explorer, Review Queue, Surveys, Evidence, Analytics, Execution Memory, Audit |
+| `supervisor` | `password123` | **Field Supervisor** | Manoj Kalita (Resident Field Engineer & Site Supervisor) | Dashboard, Projects, Progress Field Capture, Surveys, Evidence |
+| `reviewer` | `password123` | **Reviewer** | Ananya Dutta (Senior QA / QC Review Engineer) | Dashboard, Schedule Explorer, Review Queue, Surveys, Evidence, Audit |
+| `manager` | `password123` | **Project Manager** | Nandita Das (Project Manager, Capital Projects) | Dashboard, PM Workstation, Projects, Schedule, Review Queue, Surveys, Evidence, Analytics, Memory, Audit |
+| `executive` | `password123` | **Executive / GM** | Dr. Ranjit Bora (Director, Operations & Projects) | Dashboard, Executive Command Center, Projects, Schedule, Evidence, Analytics, Memory, Audit |
+| `admin` | `password123` | **Admin** | Sanjeev Sarmah (Chief General Manager & System Admin) | System Administration, User Directory, Full Portfolio & Access Controls |
+
