@@ -44,7 +44,7 @@ Does the attached image provide visual evidence supporting this claim?
 Respond ONLY with a JSON object containing a boolean "verified", an integer "confidence" (0-100), a string "reasoning", and an integer "suggested_progress" (0-100) representing your best visual estimate of the percentage of work completed.`;
 
     // 4. Run Cloudflare Vision AI
-    const aiResult = await env.AI.run('@cf/moondream/moondream3.1-9B-A2B', {
+    const aiResult = await env.AI.run('@cf/llava-hf/llava-1.5-7b-hf', {
       prompt,
       image: imageArray
     });
