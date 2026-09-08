@@ -78,7 +78,7 @@ async function runTest() {
     const reviewRes = await fetch(`${BASE_URL}/reviews/${reviewItemId}`, { headers });
     if (reviewRes.ok) {
       const reviewItem = await reviewRes.json();
-      if (reviewItem.aiVerification) {
+      if (reviewItem.aiVerification && reviewItem.aiVerification.status !== 'pending') {
         aiResult = reviewItem.aiVerification;
         break;
       }
