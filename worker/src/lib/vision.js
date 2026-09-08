@@ -29,7 +29,7 @@ export async function verifyEvidenceWithVision(env, db, reviewId, reportId, tran
     // 3. Prompt for the Vision Model
     const prompt = `The field supervisor claims: "${transcript}". 
 Does the attached image provide visual evidence supporting this claim? 
-Respond ONLY with a JSON object containing a boolean "verified", an integer "confidence" (0-100), and a string "reasoning".`;
+Respond ONLY with a JSON object containing a boolean "verified", an integer "confidence" (0-100), a string "reasoning", and an integer "suggested_progress" (0-100) representing your best visual estimate of the percentage of work completed.`;
 
     // 4. Run Cloudflare Vision AI
     const aiResult = await env.AI.run('@cf/llava-hf/llava-1.5-7b-hf', {
@@ -45,6 +45,7 @@ Respond ONLY with a JSON object containing a boolean "verified", an integer "con
       status: 'success',
       verified: true,
       confidence: 80,
+      suggestedProgress: null,
       reasoning: 'AI could not format the output properly, but image was processed.'
     };
 
@@ -57,6 +58,7 @@ Respond ONLY with a JSON object containing a boolean "verified", an integer "con
           status: 'success',
           verified: !!extractedJson.verified,
           confidence: Number(extractedJson.confidence) || 0,
+          suggestedProgress: extractedJson.suggested_progress !== undefined ? Number(extractedJson.suggested_progress) : null,
           reasoning: extractedJson.reasoning || textResponse
         };
       } else {

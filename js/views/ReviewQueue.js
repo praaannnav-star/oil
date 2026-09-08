@@ -388,8 +388,15 @@ export async function ReviewQueueView() {
 
     // Section 4: Verified Progress Assessor (Slider)
     let progressVal = item.extractedEvent?.status === 'Completed' ? 100 : (item.topMatch?.progress || 0);
-    // Suggest a logical increment if not 100% and not already higher
-    if (progressVal < 100 && item.extractedEvent?.status === 'In Progress') progressVal = Math.min(100, progressVal + 10);
+    let aiSuggestedProgress = item.aiVerification?.suggestedProgress;
+    let wasAutoCorrected = false;
+
+    if (aiSuggestedProgress !== undefined && aiSuggestedProgress !== null) {
+      progressVal = aiSuggestedProgress;
+      wasAutoCorrected = true;
+    } else if (progressVal < 100 && item.extractedEvent?.status === 'In Progress') {
+      progressVal = Math.min(100, progressVal + 10);
+    }
     
     if (item.state !== 'approved' && item.topMatch?.id) {
       const progBox = document.createElement('div');
@@ -401,6 +408,7 @@ export async function ReviewQueueView() {
           <label class="text-xs font-bold text-primary">Verified Progress Implemented (%)</label>
           <span class="badge badge-pending font-mono" id="slider-val-display">${progressVal}%</span>
         </div>
+        ${wasAutoCorrected ? `<span class="text-xs text-primary mt-1 font-semibold">✨ AI Vision adjusted to ${progressVal}% based on photo evidence.</span>` : ''}
         <input type="range" id="progress-slider" min="0" max="100" step="5" value="${progressVal}" class="w-full mt-2" style="cursor:ew-resize;">
         <div class="d-flex justify-between text-xs text-muted mt-1 font-mono">
           <span>0%</span>
