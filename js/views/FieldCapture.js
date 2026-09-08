@@ -15,6 +15,39 @@ export async function FieldCaptureView() {
   const container = document.createElement('div');
   container.className = 'view-container';
 
+  // --- Geolocation: fetch supervisor's GPS coordinates on load ---
+  let geo = null; // { lat, lng, accuracy, at }
+
+  const geoTagBadge = document.createElement('span');
+  geoTagBadge.className = 'text-xs font-mono';
+  geoTagBadge.style.color = 'var(--color-warning)';
+  geoTagBadge.textContent = '📍 Acquiring GPS...';
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        geo = {
+          lat: +pos.coords.latitude.toFixed(5),
+          lng: +pos.coords.longitude.toFixed(5),
+          accuracy: Math.round(pos.coords.accuracy),
+          at: new Date().toISOString()
+        };
+        geoTagBadge.style.color = 'var(--color-success)';
+        geoTagBadge.textContent = `📍 GPS Locked (${geo.lat}, ${geo.lng} ±${geo.accuracy}m)`;
+      },
+      (err) => {
+        geoTagBadge.style.color = 'var(--color-muted)';
+        geoTagBadge.textContent = err.code === 1
+          ? '📍 GPS denied — location not tagged'
+          : '📍 GPS unavailable';
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+    );
+  } else {
+    geoTagBadge.style.color = 'var(--color-muted)';
+    geoTagBadge.textContent = '📍 Geolocation not supported';
+  }
+
   // Page Header
   const headerRow = document.createElement('div');
   headerRow.className = 'd-flex justify-between items-center flex-wrap gap-2';
@@ -24,6 +57,7 @@ export async function FieldCaptureView() {
     <h1 class="text-2xl font-bold text-primary">Field Progress Report</h1>
     <p class="text-xs text-secondary mt-1">Capture field execution actuals via voice or text and link directly to L5/L6 schedule activities</p>
   `;
+  titleGroup.appendChild(geoTagBadge);
   headerRow.appendChild(titleGroup);
 
   const sampleFillBtn = Button({
@@ -314,7 +348,9 @@ export async function FieldCaptureView() {
           url: reader.result,
           type: file.type,
           uploadedBy: State.getState().currentUser.name,
-          locationMeta: 'Zone East - Pad 14 (GPS Locked)'
+          locationMeta: geo
+            ? `GPS: ${geo.lat}, ${geo.lng} (±${geo.accuracy}m) at ${new Date(geo.at).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })} IST`
+            : 'Location not available'
         });
         renderAttachedThumbnails();
         Toast.success('Photo evidence attached.');
@@ -412,6 +448,7 @@ export async function FieldCaptureView() {
           signals: currentMatch.signals,
           alternatives: currentMatch.alternatives,
           evidenceItems: attachedEvidence.map(({ localId, ...rest }) => rest),
+          geo,
           isOffline: !navigator.onLine
         };
 
