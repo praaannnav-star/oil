@@ -82,7 +82,7 @@ export const DEMO_ACCOUNTS = [
     department: 'Field Operations & Construction — Rig 04',
     avatar: '👷‍♂️',
     badgeClass: 'badge-on-track',
-    allowedRoutes: ['/overview', '/progress', '/progress/new', '/surveys', '/evidence', '/activities/:id']
+    allowedRoutes: ['/overview', '/projects', '/projects/:id', '/progress', '/progress/new', '/surveys', '/evidence', '/activities/:id']
   }
 ];
 
