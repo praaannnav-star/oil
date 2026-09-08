@@ -86,7 +86,7 @@ export async function OverviewView() {
   container.appendChild(kpiGrid);
 
   // "What changed since yesterday?" Intelligence Box (Mandatory Core Feature)
-  const prj = await ProjectsService.getProject('PRJ-OIL-2026-01');
+  const prj = await ProjectsService.getProject('PRJ-OIL-DUL-001');
   const intelligenceCard = document.createElement('div');
   intelligenceCard.className = 'card p-4 gap-3';
   intelligenceCard.style.background = 'linear-gradient(180deg, rgba(37, 99, 235, 0.08) 0%, var(--color-surface) 100%)';
@@ -103,7 +103,7 @@ export async function OverviewView() {
   `;
 
   // Derived from real field data — no hardcoded intelligence blocks
-  const digestSignals = await ReportsService.summarizeDailyDigest('PRJ-OIL-2026-01');
+  const digestSignals = await ReportsService.summarizeDailyDigest('PRJ-OIL-DUL-001');
   const toneClass = { success: 'text-success', info: 'text-info', danger: 'text-danger', warning: 'text-warning' };
   const digestGrid = document.createElement('div');
   digestGrid.className = 'd-grid grid-3 gap-3 mt-1';

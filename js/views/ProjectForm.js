@@ -26,7 +26,7 @@ export async function ProjectFormView(params = {}) {
     <form id="project-form" class="project-form card p-4 gap-4">
       <section class="form-section"><h2>Project identity</h2><div class="d-grid grid-2 gap-3">
         <label>Project name<input name="name" required value="${project.name || ''}" placeholder="e.g. Duliajan expansion"></label>
-        <label>Project code<input name="code" required value="${project.code || ''}" placeholder="e.g. OIL-CGGS-EXP"></label>
+        <label>Project code<input name="code" required value="${project.code || ''}" placeholder="e.g. OIL-FHQ-DUL"></label>
         <label>Location<input name="location" required value="${project.location || ''}" placeholder="District, state"></label>
         <label>Client<input name="client" required value="${project.client || ''}"></label>
         <label>Budget<input name="budget" required value="${project.budget || ''}" placeholder="e.g. ₹ 200 Cr"></label>

@@ -5,7 +5,7 @@ class StateStore {
   constructor() {
     this.state = {
       currentUser: Auth.getUser(),
-      currentProjectId: 'PRJ-OIL-2026-01',
+      currentProjectId: 'PRJ-OIL-DUL-001',
       currentRoute: '/overview',
       connectionStatus: 'online',
       pendingCount: 0,

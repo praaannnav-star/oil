@@ -212,13 +212,15 @@ CREATE INDEX IF NOT EXISTS idx_sites_name ON sites(name);
 
 -- Seed authoritative Oil India project locations & pads
 INSERT OR IGNORE INTO sites (id, name, lat, lng, project_id, chainage_ref, facility_type) VALUES
-  ('SITE-OIL-DUL-01', 'Duliajan CGGS Main Complex', 27.3569, 95.3194, 'PRJ-OIL-2026-01', 'CH:0+000', 'Plant'),
+  ('SITE-OIL-DUL-01', 'Duliajan Field Headquarters', 27.3569, 95.3194, 'PRJ-OIL-DUL-001', 'Duliajan HQ', 'Operations Hub'),
+  ('SITE-OIL-CTF-01', 'Central Tank Farm, Duliajan', 27.3499, 95.3207, 'PRJ-OIL-DUL-001', 'CTF Duliajan', 'Tank Farm'),
+  ('SITE-OIL-DUL-2026-01', 'Duliajan CGGS Main Complex', 27.3569, 95.3194, 'PRJ-OIL-2026-01', 'CH:0+000', 'Plant'),
   ('SITE-OIL-DUL-PAD14', 'Duliajan CGGS Pad 14 (Foundation B2)', 27.3612, 95.3241, 'PRJ-OIL-2026-01', 'Pad 14', 'Drill Pad'),
   ('SITE-OIL-DUL-PAD08', 'Duliajan CGGS Pad 08 (Substation Area)', 27.3521, 95.3125, 'PRJ-OIL-2026-01', 'Pad 08', 'Drill Pad'),
-  ('SITE-OIL-NUM-01', 'Numaligarh Dispatch Terminal', 26.6025, 93.7548, 'PRJ-OIL-2026-02', 'CH:0+000', 'Terminal'),
-  ('SITE-OIL-NUM-ROW42', 'Numaligarh Feeder RoW (Ch: 42+500)', 26.6842, 93.8912, 'PRJ-OIL-2026-02', 'CH:42+500', 'Pipeline RoW'),
-  ('SITE-OIL-SIL-01', 'Siliguri Receiving Station', 26.7271, 88.3953, 'PRJ-OIL-2026-02', 'CH:480+000', 'Terminal'),
-  ('SITE-OIL-PS-02', 'Intermediate Pump Station PS-02', 26.6410, 91.1250, 'PRJ-OIL-2026-02', 'CH:210+000', 'Pump Station');
+  ('SITE-OIL-NUM-01', 'Numaligarh Dispatch Terminal', 26.6025, 93.7548, 'PRJ-OIL-NUM-002', 'NDT', 'Terminal'),
+  ('SITE-OIL-NSPL-01', 'Numaligarh-Siliguri Product Pipeline Corridor', 26.6842, 93.8912, 'PRJ-OIL-NUM-002', 'NSPL Corridor', 'Pipeline'),
+  ('SITE-OIL-SIL-01', 'Siliguri Receiving Station', 26.7271, 88.3953, 'PRJ-OIL-NUM-002', 'Siliguri Terminal', 'Terminal');
+
 
 -- AI Golden Set Benchmark Data (Phase W4 Quality & Tuning Loop)
 CREATE TABLE IF NOT EXISTS golden_set (

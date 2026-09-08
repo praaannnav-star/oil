@@ -206,7 +206,7 @@ export const ReportsService = {
   async submitReport(reportData) {
     const newReport = {
       id: `REP-${Date.now()}`,
-      projectId: reportData.projectId || 'PRJ-OIL-2026-01',
+      projectId: reportData.projectId || 'PRJ-OIL-DUL-001',
       author: reportData.author || 'Site Engineer (Field PWA)',
       timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST',
       rawTranscript: reportData.rawTranscript,

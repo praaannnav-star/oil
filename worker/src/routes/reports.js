@@ -45,7 +45,7 @@ export default [
       const extracted = body.extractedEvent || {};
       const matched = body.matchedActivity || null;
       const confidence = Number(body.confidence || (matched ? matched.confidence : 90));
-      const status = body.isOffline || body.status === 'pending-sync' ? 'pending-sync' : 'pending-review';
+      const status = 'pending-review';
 
       // Evidence items arrive as metadata (photos already uploaded via
       // /api/evidence/sign + confirm, or carried as offline data URLs).
@@ -74,7 +74,7 @@ export default [
         matched?.id || null, matched?.name || null, matched?.code || null, confidence,
         JSON.stringify(body.signals || []), JSON.stringify(body.alternatives || []),
         status, body.source || 'user', JSON.stringify(evidenceIds),
-        status === 'pending-sync' && !body.isOffline ? new Date().toISOString() : null
+        body.isOffline ? new Date().toISOString() : null
       ).run();
 
       // Provenance triples when the client supplies them (plan §8).
@@ -86,9 +86,9 @@ export default [
 
 function calculateUrgency(extracted) {
   const blocker = (extracted?.blocker || '').toLowerCase();
-  const status = (extracted?.status || '').toLowerCase();
+  const extStatus = (extracted?.status || '').toLowerCase();
   const hasSevereBlocker = blocker.includes('halt') || blocker.includes('stop') || blocker.includes('hazard') || blocker.includes('breakdown') || blocker.includes('critical') || blocker.includes('failure');
-  const hasModerateBlocker = blocker.includes('shortage') || blocker.includes('delay') || blocker.includes('weather') || blocker.includes('rain') || blocker.includes('permit') || status.includes('delay');
+  const hasModerateBlocker = blocker.includes('shortage') || blocker.includes('delay') || blocker.includes('weather') || blocker.includes('rain') || blocker.includes('permit') || extStatus.includes('delay');
 
   if (hasSevereBlocker) {
     return { priority: 'P1', score: 95, label: 'P1 Critical', reason: extracted.blocker };
@@ -96,7 +96,7 @@ function calculateUrgency(extracted) {
   if (hasModerateBlocker) {
     return { priority: 'P2', score: 75, label: 'P2 High', reason: extracted.blocker || 'Activity Delayed' };
   }
-  if (status.includes('progress') || status.includes('started')) {
+  if (extStatus.includes('progress') || extStatus.includes('started')) {
     return { priority: 'P3', score: 45, label: 'P3 Medium', reason: 'Routine Progress' };
   }
   return { priority: 'P4', score: 20, label: 'P4 Info', reason: 'On Track / Completed' };
@@ -109,29 +109,26 @@ function resolveReviewerRole(discipline) {
   return 'Lead Planner';
 }
 
-      let reviewCreated = null;
-      if (status !== 'pending-sync') {
-        reviewCreated = `REV-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-        const urgency = calculateUrgency(extracted);
-        const suggestedRole = resolveReviewerRole(extracted.discipline);
-        const enrichedExtracted = {
-          ...extracted,
-          urgency,
-          suggestedReviewerRole: suggestedRole
-        };
+      const reviewCreated = `REV-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const urgency = calculateUrgency(extracted);
+      const suggestedRole = resolveReviewerRole(extracted.discipline);
+      const enrichedExtracted = {
+        ...extracted,
+        urgency,
+        suggestedReviewerRole: suggestedRole
+      };
 
-        await db.prepare(
-          `INSERT INTO reviews (id, report_id, type, source, reporter, discipline, extracted_json,
-             top_match_json, alternatives_json, state, tab_category, age)
-           VALUES (?, ?, 'report', ?, ?, ?, ?, ?, ?, 'needs-review', ?, 'Just now')`
-        ).bind(
-          reviewCreated, id, body.sourceLabel || 'Mobile Field App', body.author || user.name,
-          extracted.discipline || 'Civil', JSON.stringify(enrichedExtracted),
-          JSON.stringify(matched ? { ...matched, confidence, signals: body.signals || [] } : null),
-          JSON.stringify(body.alternatives || []),
-          confidence >= 80 ? 'high-confidence' : 'needs-review'
-        ).run();
-      }
+      await db.prepare(
+        `INSERT INTO reviews (id, report_id, type, source, reporter, discipline, extracted_json,
+           top_match_json, alternatives_json, state, tab_category, age)
+         VALUES (?, ?, 'report', ?, ?, ?, ?, ?, ?, 'needs-review', ?, 'Just now')`
+      ).bind(
+        reviewCreated, id, body.sourceLabel || 'Mobile Field App', body.author || user.name,
+        extracted.discipline || 'Civil', JSON.stringify(enrichedExtracted),
+        JSON.stringify(matched ? { ...matched, confidence, signals: body.signals || [] } : null),
+        JSON.stringify(body.alternatives || []),
+        confidence >= 80 ? 'high-confidence' : 'needs-review'
+      ).run();
 
       await audit.append({
         id: `AUD-${Date.now()}`,

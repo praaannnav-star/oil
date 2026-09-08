@@ -308,16 +308,32 @@ export async function FieldCaptureView() {
       // Read as a data URL so the image survives refresh and offline queuing
       const reader = new FileReader();
       reader.onload = () => {
-        attachedEvidence.push({
-          localId: `EVD-NEW-${Date.now()}`,
-          filename: file.name,
-          url: reader.result,
-          type: file.type,
-          uploadedBy: State.getState().currentUser.name,
-          locationMeta: 'Zone East - Pad 14 (GPS Locked)'
-        });
-        renderAttachedThumbnails();
-        Toast.success('Photo evidence attached.');
+        // Fetch live location for evidence tagging
+        let liveLocation = 'Location not available';
+        const addEvidenceWithLoc = (locString) => {
+          attachedEvidence.push({
+            localId: `EVD-NEW-${Date.now()}`,
+            filename: file.name,
+            url: reader.result,
+            type: file.type,
+            uploadedBy: State.getState().currentUser.name,
+            locationMeta: locString
+          });
+          renderAttachedThumbnails();
+          Toast.success('Photo evidence attached.');
+        };
+
+        try {
+          navigator.geolocation?.getCurrentPosition(
+            (pos) => {
+              addEvidenceWithLoc(`Lat: ${pos.coords.latitude.toFixed(5)}, Lng: ${pos.coords.longitude.toFixed(5)} (GPS Locked)`);
+            },
+            () => { addEvidenceWithLoc(liveLocation); },
+            { timeout: 5000, maximumAge: 0 }
+          );
+        } catch (_) {
+          addEvidenceWithLoc(liveLocation);
+        }
       };
       reader.onerror = () => Toast.danger('Could not read the selected image.');
       reader.readAsDataURL(file);
@@ -424,7 +440,11 @@ export async function FieldCaptureView() {
         }
 
         setTimeout(() => {
-          AppRouter.navigate('/review');
+          if (Auth.canAccess('/review')) {
+            AppRouter.navigate('/review');
+          } else {
+            AppRouter.navigate('/overview');
+          }
         }, 600);
       }
     });

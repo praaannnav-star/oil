@@ -5,6 +5,7 @@ import { SurveyService } from '../services/surveys.js';
 import { Speech } from '../services/speech.js';
 import { State } from '../state.js';
 import { AppRouter } from '../router.js';
+import { Auth } from '../services/auth.js';
 import { Toast } from '../components/Toast.js';
 import { Button } from '../components/Button.js';
 import { Icons } from '../components/Icons.js';
@@ -29,14 +30,36 @@ export async function SurveyWizardView() {
   let geo = null;
   let photos = [];
 
-  // Geo auto-tag (best-effort)
-  try {
-    navigator.geolocation?.getCurrentPosition(
-      pos => { geo = { lat: +pos.coords.latitude.toFixed(5), lng: +pos.coords.longitude.toFixed(5), at: new Date().toISOString() }; },
-      () => { /* permission denied — proceed without */ },
-      { timeout: 5000 }
-    );
-  } catch (_) { /* geolocation unavailable */ }
+  let isFetchingGeo = true;
+  let geoError = false;
+
+  function fetchGeoLocation() {
+    isFetchingGeo = true;
+    geoError = false;
+    renderStepper();
+    try {
+      navigator.geolocation?.getCurrentPosition(
+        pos => { 
+          geo = { lat: +pos.coords.latitude.toFixed(5), lng: +pos.coords.longitude.toFixed(5), at: new Date().toISOString() }; 
+          isFetchingGeo = false;
+          renderStepper();
+        },
+        () => { 
+          geoError = true;
+          isFetchingGeo = false;
+          renderStepper();
+        },
+        { timeout: 5000, maximumAge: 0 }
+      );
+    } catch (_) { 
+      geoError = true;
+      isFetchingGeo = false;
+      renderStepper();
+    }
+  }
+
+  // Initial geo fetch
+  fetchGeoLocation();
 
   const stepBadge = (n, label) => `
     <span class="badge ${step === n ? 'badge-in-progress' : 'badge-completed'}" style="font-size:12px; width:24px; height:24px; border-radius:50%; justify-content:center; padding:0;">${n}</span>
@@ -52,14 +75,28 @@ export async function SurveyWizardView() {
   container.appendChild(body);
 
   function renderStepper() {
+    let geoStatusHtml = '';
+    if (isFetchingGeo) {
+      geoStatusHtml = `<span class="text-xs text-muted font-mono ml-auto">📍 Fetching live location...</span>`;
+    } else if (geo) {
+      geoStatusHtml = `<span class="text-xs text-success font-mono ml-auto" style="cursor:pointer;" title="Click to refresh location" id="refresh-geo-btn">📍 Geo-tag locked (${geo.lat}, ${geo.lng})</span>`;
+    } else if (geoError) {
+      geoStatusHtml = `<span class="text-xs text-danger font-mono ml-auto" style="cursor:pointer;" title="Click to retry fetching location" id="refresh-geo-btn">📍 Location unavailable (Retry)</span>`;
+    }
+
     stepper.innerHTML = `
       <div class="d-flex items-center gap-2">${stepBadge(1, 'Template')}</div>
       <span class="text-muted">→</span>
       <div class="d-flex items-center gap-2">${stepBadge(2, 'Questions')}</div>
       <span class="text-muted">→</span>
       <div class="d-flex items-center gap-2">${stepBadge(3, 'Submit')}</div>
-      ${geo ? `<span class="text-xs text-success font-mono ml-auto">📍 Geo-tag locked (${geo.lat}, ${geo.lng})</span>` : ''}
+      ${geoStatusHtml}
     `;
+
+    const refreshBtn = stepper.querySelector('#refresh-geo-btn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', fetchGeoLocation);
+    }
   }
 
   function renderTemplateStep() {
@@ -239,7 +276,11 @@ export async function SurveyWizardView() {
           isOffline: !navigator.onLine
         });
         Toast.success(navigator.onLine ? 'Survey submitted to review queue.' : 'Survey queued — will sync automatically.');
-        AppRouter.navigate('/review');
+        if (Auth.canAccess('/review')) {
+          AppRouter.navigate('/review');
+        } else {
+          AppRouter.navigate('/overview');
+        }
       }
     }));
     reviewCard.appendChild(actions);

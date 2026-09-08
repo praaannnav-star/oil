@@ -14,7 +14,7 @@ export async function ProjectDetailView(params = {}) {
   const container = document.createElement('div');
   container.className = 'view-container';
 
-  const projectId = params.id || 'PRJ-OIL-2026-01';
+  const projectId = params.id || 'PRJ-OIL-DUL-001';
   const project = await ProjectsService.getProject(projectId);
 
   if (!project) {

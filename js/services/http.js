@@ -28,7 +28,7 @@ class ApiHttpService {
     }
   }
 
-  async login(username, password) {
+  async login(username, password, { applySession = true } = {}) {
     const data = await this.request('/auth/login', {
       method: 'POST',
       body: { username, password },
@@ -37,11 +37,11 @@ class ApiHttpService {
     this.accessToken = data.jwt;
     this.refreshToken = data.refresh;
     await DB.saveEntity(TOKEN_KEY, { access: data.jwt, refresh: data.refresh });
-    Auth.saveSession(data.user);
+    if (applySession) Auth.saveSession(data.user);
     return { success: true, user: data.user };
   }
 
-  async logout() {
+  async logout({ clearSession = true } = {}) {
     try {
       if (this.refreshToken) {
         await fetch(`${BASE}/auth/logout`, {
@@ -54,7 +54,7 @@ class ApiHttpService {
     this.accessToken = null;
     this.refreshToken = null;
     await DB.saveEntity(TOKEN_KEY, {});
-    Auth.logout();
+    if (clearSession) Auth.clearSession();
   }
 
   async _persistTokens() {
@@ -80,7 +80,7 @@ class ApiHttpService {
       this.accessToken = null;
       this.refreshToken = null;
       await DB.saveEntity(TOKEN_KEY, {});
-      Auth.logout();
+      Auth.clearSession();
       if (location.hash && !location.hash.startsWith('#/login')) location.hash = '#/login';
       return false;
     }

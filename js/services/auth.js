@@ -1,4 +1,7 @@
-// Authentication & Role-Based Access Control (RBAC) Service
+// Authentication session coordinator. API tokens are handled by ApiHttp;
+// this service owns the browser-visible identity and navigation grants.
+import { API } from './api.js';
+import { canAccessRoute } from './access-policy.js';
 export const USER_ROLES = {
   ADMIN: 'Admin',
   EXECUTIVE: 'Executive / GM',
@@ -89,14 +92,22 @@ class AuthService {
   constructor() {
     this.currentUser = this.loadSession();
     this.listeners = new Set();
+    this._authIntent = 0;
   }
 
   _triggerLiveLogin(username, password) {
+    // A mock persona is a complete local session. Trying to establish a
+    // Worker session in the background made temporary network failures look
+    // like logout events and replaced client route grants mid-navigation.
+    if (API.useMock || !navigator.onLine) return;
     if (this._syncTimeout) clearTimeout(this._syncTimeout);
+    const intent = ++this._authIntent;
     this._syncTimeout = setTimeout(() => {
       import('./http.js').then(({ ApiHttp }) => {
-        ApiHttp.login(username, password)
-          .then(() => {
+        ApiHttp.login(username, password, { applySession: false })
+          .then(({ user }) => {
+            if (intent !== this._authIntent) return;
+            this.saveSession(user);
             // Once JWT is established, pull initial data!
             return import('../sync.js').then(({ Sync }) => {
               if (Sync.pullRemoteState) return Sync.pullRemoteState();
@@ -112,8 +123,8 @@ class AuthService {
       const saved = sessionStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Re-hydrate from DEMO_ACCOUNTS to ensure we have allowedRoutes and fresh properties
-        if (parsed && parsed.role) {
+        // Re-hydrate from DEMO_ACCOUNTS only if using mock backend or missing required fields
+        if (parsed && parsed.role && (API.useMock || !parsed.allowedRoutes)) {
           const freshAccount = DEMO_ACCOUNTS.find(acc => acc.role === parsed.role);
           if (freshAccount) {
             return { ...freshAccount, token: parsed.token || `mock-jwt-${Date.now()}` };
@@ -140,6 +151,10 @@ class AuthService {
       console.warn('Failed saving session to storage', e);
     }
     this.notify();
+  }
+
+  clearSession() {
+    this.saveSession(null);
   }
 
   login(username, password) {
@@ -189,8 +204,10 @@ class AuthService {
   }
 
   logout() {
-    this.saveSession(null);
-    import('./http.js').then(({ ApiHttp }) => ApiHttp.logout().catch(() => {}));
+    ++this._authIntent;
+    this.clearSession();
+    // Remote revocation is best effort and must never re-enter Auth.logout().
+    import('./http.js').then(({ ApiHttp }) => ApiHttp.logout({ clearSession: false }).catch(() => {}));
   }
 
   isAuthenticated() {
@@ -202,17 +219,7 @@ class AuthService {
   }
 
   canAccess(routePath) {
-    if (!this.currentUser) return false;
-    if (this.currentUser.role === USER_ROLES.ADMIN) return true;
-    if (!this.currentUser.allowedRoutes) return true; // Fallback to allow if undefined
-
-    const routeParts = routePath.split('/').filter(Boolean);
-    return this.currentUser.allowedRoutes.some(pattern => {
-      const patternParts = pattern.split('/').filter(Boolean);
-      // A named creation route must not be mistaken for a dynamic project id.
-      if (routeParts.includes('new') && !patternParts.includes('new')) return false;
-      return patternParts.length === routeParts.length && patternParts.every((part, index) => part.startsWith(':') || part === routeParts[index]);
-    });
+    return canAccessRoute(this.currentUser, routePath);
   }
 
   subscribe(fn) {

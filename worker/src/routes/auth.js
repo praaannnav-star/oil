@@ -9,11 +9,11 @@ import { canReview } from '../lib/authz.js';
 
 // Demo personas seeded on first boot when DEMO_MODE=1 (plan D4 default).
 const DEMO_USERS = [
-  { id: 'USR-PM-01', username: 'manager', name: 'Nandita Das', title: 'Project Manager, Capital Projects', role: 'Project Manager', department: 'Projects Delivery Division', avatar: '👷', allowedRoutes: ['/overview', '/manager', '/projects', '/projects/new', '/projects/:id', '/projects/:id/edit', '/schedule', '/activities/:id', '/review', '/surveys', '/evidence', '/analytics', '/memory', '/audit'] },
+  { id: 'USR-PM-01', username: 'manager', name: 'Nandita Das', title: 'Project Manager, Capital Projects', role: 'Project Manager', department: 'Projects Delivery Division', avatar: '👷', allowedRoutes: ['/overview', '/manager', '/projects', '/projects/new', '/projects/:id', '/projects/:id/edit', '/schedule', '/activities/:id', '/review', '/surveys', '/evidence', '/analytics', '/memory', '/audit', '/progress', '/progress/new'] },
   { id: 'USR-ADMIN-01', username: 'admin', name: 'Sanjeev Sarmah', title: 'Chief General Manager & System Admin', role: 'Admin', department: 'Corporate IT & Operations Control', avatar: '👨‍💼', allowedRoutes: ['/overview', '/projects', '/projects/:id', '/schedule', '/activities/:id', '/progress', '/progress/new', '/review', '/surveys', '/evidence', '/analytics', '/memory', '/audit'] },
-  { id: 'USR-EXEC-01', username: 'executive', name: 'Dr. Ranjit Bora', title: 'Director (Operations & Projects)', role: 'Executive / GM', department: 'Executive Directorate — Duliajan', avatar: '👔', allowedRoutes: ['/overview', '/projects', '/projects/:id', '/schedule', '/activities/:id', '/evidence', '/analytics', '/memory', '/audit'] },
-  { id: 'USR-PLAN-01', username: 'planner', name: 'Rajesh Baruah', title: 'Lead Schedule & Planning Engineer', role: 'Planner', department: 'Planning & Project Controls Division', avatar: '📐', allowedRoutes: ['/overview', '/projects', '/projects/:id', '/schedule', '/activities/:id', '/review', '/surveys', '/evidence', '/analytics', '/memory', '/audit'] },
-  { id: 'USR-REV-01', username: 'reviewer', name: 'Ananya Dutta', title: 'Senior QA / QC Review Engineer', role: 'Reviewer', department: 'Quality Assurance & Inspection Bureau', avatar: '🔍', allowedRoutes: ['/overview', '/schedule', '/activities/:id', '/review', '/surveys', '/evidence', '/audit'] },
+  { id: 'USR-EXEC-01', username: 'executive', name: 'Dr. Ranjit Bora', title: 'Director (Operations & Projects)', role: 'Executive / GM', department: 'Executive Directorate — Duliajan', avatar: '👔', allowedRoutes: ['/overview', '/projects', '/projects/:id', '/schedule', '/activities/:id', '/evidence', '/analytics', '/memory', '/audit', '/progress', '/progress/new'] },
+  { id: 'USR-PLAN-01', username: 'planner', name: 'Rajesh Baruah', title: 'Lead Schedule & Planning Engineer', role: 'Planner', department: 'Planning & Project Controls Division', avatar: '📐', allowedRoutes: ['/overview', '/projects', '/projects/:id', '/schedule', '/activities/:id', '/review', '/surveys', '/evidence', '/analytics', '/memory', '/audit', '/progress', '/progress/new'] },
+  { id: 'USR-REV-01', username: 'reviewer', name: 'Ananya Dutta', title: 'Senior QA / QC Review Engineer', role: 'Reviewer', department: 'Quality Assurance & Inspection Bureau', avatar: '🔍', allowedRoutes: ['/overview', '/schedule', '/activities/:id', '/review', '/surveys', '/evidence', '/audit', '/progress', '/progress/new'] },
   { id: 'USR-FIELD-01', username: 'supervisor', name: 'Manoj Kalita', title: 'Resident Field Engineer & Site Supervisor', role: 'Field Supervisor', department: 'Field Operations & Construction — Rig 04', avatar: '👷‍♂️', allowedRoutes: ['/overview', '/progress', '/progress/new', '/surveys', '/evidence', '/activities/:id'] }
 ];
 
@@ -33,11 +33,10 @@ export function toClientUser(u) {
 
 async function ensureDemoSeed(db, env) {
   if (String(env.DEMO_MODE) !== '1') return;
-  const row = await db.prepare('SELECT COUNT(*) AS n FROM users').first();
-  if (row && Number(row.n) > 0) return;
   const stmt = db.prepare(
     `INSERT INTO users (id, username, password_hash, name, title, role, department, avatar, allowed_routes_json)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET allowed_routes_json = excluded.allowed_routes_json`
   );
   const hash = await hashPassword('password123');
   await db.batch(DEMO_USERS.map(u => stmt.bind(

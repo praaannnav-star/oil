@@ -3,6 +3,7 @@ import { State } from './state.js';
 import { Auth } from './services/auth.js';
 import { Toast } from './components/Toast.js';
 import { escapeHtml } from './utils/dom.js';
+import { getDefaultRoute, normalizeRoute } from './services/access-policy.js';
 
 class Router {
   constructor() {
@@ -10,6 +11,7 @@ class Router {
     this.currentViewEl = null;
     this.container = null;
     this.appEl = null;
+    this.navigationId = 0;
   }
 
   register(pathPattern, viewFactory) {
@@ -42,12 +44,13 @@ class Router {
   }
 
   async handleRoute() {
+    const navigationId = ++this.navigationId;
     let rawHash = window.location.hash.slice(1) || '';
     if (!rawHash || rawHash.startsWith('landing-')) {
       rawHash = '/';
     }
     const [pathPart] = rawHash.split('?');
-    let path = pathPart.startsWith('/') ? pathPart : '/' + pathPart;
+    let path = normalizeRoute(pathPart);
 
     // --- Authentication Navigation Guards ---
     const isAuthed = Auth.isAuthenticated();
@@ -57,7 +60,7 @@ class Router {
       window.location.hash = '#/login';
       return;
     } else if (isAuthed && path === '/login') {
-      const redirect = sessionStorage.getItem('oil_redirect_route') || '/overview';
+      const redirect = sessionStorage.getItem('oil_redirect_route') || getDefaultRoute(Auth.getUser());
       sessionStorage.removeItem('oil_redirect_route');
       window.location.hash = '#' + redirect;
       return;
@@ -73,8 +76,9 @@ class Router {
       if (!Auth.canAccess(path)) {
         const user = Auth.getUser();
         Toast.warning(`Access restricted: Your role (${user ? user.role : 'Guest'}) does not have permission for ${path}`);
-        window.location.hash = '#/overview';
-        path = '/overview';
+        const fallback = getDefaultRoute(user);
+        window.location.hash = '#' + fallback;
+        path = fallback;
       }
     }
 
@@ -123,6 +127,8 @@ class Router {
       this.container.innerHTML = '';
       try {
         const viewEl = await matchedHandler(params);
+        // Async views must not overwrite the result of a newer route change.
+        if (navigationId !== this.navigationId) return;
         if (viewEl) {
           this.currentViewEl = viewEl;
           this.container.appendChild(viewEl);

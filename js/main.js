@@ -1,6 +1,7 @@
 import { AppRouter } from './router.js';
 import { State } from './state.js';
 import { Auth, DEMO_ACCOUNTS } from './services/auth.js';
+import { SessionManager } from './services/session-manager.js';
 import { Offline } from './offline.js';
 import { Sync } from './sync.js';
 import { PWA } from './pwa.js';
@@ -44,6 +45,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const { ApiHttp } = await import('./services/http.js');
       await ApiHttp.init();
+      // Fetch fresh session state if authenticated
+      if (Auth.isAuthenticated()) {
+        await SessionManager.fetchAndApplySession();
+      }
     } catch (err) {
       console.warn('ApiHttp initialization fallback:', err);
     }
@@ -126,7 +131,7 @@ function setupHeaderControls() {
   if (demoResetBtn) {
     demoResetBtn.addEventListener('click', () => {
       API.resetDemoData();
-      Toast.success('Jury Demo Scenario state reset to fresh baseline.');
+      Toast.success('Project data reset to baseline.');
       AppRouter.handleRoute();
     });
   }
@@ -178,7 +183,7 @@ function setupUserProfileListener() {
     `;
 
     profileEl.querySelector('#btn-header-logout').addEventListener('click', () => {
-      Auth.logout();
+      SessionManager.logout();
       Toast.info('Signed out successfully.');
       AppRouter.navigate('/login');
     });

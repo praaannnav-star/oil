@@ -1,5 +1,6 @@
 // Animated Oil India Limited Petroleum Landing & Role Authentication Page
 import { Auth, DEMO_ACCOUNTS } from '../services/auth.js';
+import { SessionManager } from '../services/session-manager.js';
 import { State } from '../state.js';
 import { AppRouter } from '../router.js';
 import { Toast } from '../components/Toast.js';
@@ -141,12 +142,12 @@ export function LoginView() {
 
   // Setup Persona Click Handlers
   container.querySelectorAll('.btn-persona-tile').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const role = btn.getAttribute('data-role');
-      const user = Auth.quickLogin(role);
-      State.setRole(user.role);
-      Toast.success(`Authenticated as ${user.name} (${user.role})`);
-      AppRouter.navigate(getPostLoginRoute());
+      const success = await SessionManager.switchRole(role);
+      if (success) {
+        // Navigation is handled by SessionManager.switchRole reload
+      }
     });
   });
 
@@ -154,12 +155,12 @@ export function LoginView() {
   const form = container.querySelector('#login-form');
   const errorBox = container.querySelector('#login-error-box');
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = container.querySelector('#input-username').value;
     const password = container.querySelector('#input-password').value;
 
-    const result = Auth.login(username, password);
+    const result = await SessionManager.login(username, password);
     if (result.success) {
       errorBox.classList.add('d-none');
       State.setRole(result.user.role);

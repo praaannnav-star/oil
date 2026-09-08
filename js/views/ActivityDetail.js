@@ -54,7 +54,7 @@ export async function ActivityDetailView(params = {}) {
       <span class="badge badge-pending font-mono font-bold">${activity.level || 'L5'}</span>
       <h1 class="text-xl font-bold text-primary">${activity.name}</h1>
     </div>
-    <span class="text-xs text-muted font-mono mt-1">WBS Code: <strong>${activity.code || activity.id}</strong> • Project: Duliajan CGGS Expansion</span>
+    <span class="text-xs text-muted font-mono mt-1">WBS Code: <strong>${activity.code || activity.id}</strong> • Project: Oil India Limited portfolio</span>
   `;
   headerTop.appendChild(titleGroup);
 
