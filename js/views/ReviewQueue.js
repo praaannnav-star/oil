@@ -26,6 +26,23 @@ export async function ReviewQueueView() {
     </div>
   `;
 
+  const actionsDiv = document.createElement('div');
+  actionsDiv.className = 'd-flex items-center gap-2';
+
+  const refreshBtn = Button({
+    text: 'Refresh Queue',
+    variant: 'secondary',
+    size: 'sm',
+    onClick: async () => {
+      refreshBtn.disabled = true;
+      refreshBtn.textContent = 'Refreshing...';
+      await renderTable();
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = 'Refresh Queue';
+    }
+  });
+  actionsDiv.appendChild(refreshBtn);
+
   const newReportBtn = Button({
     text: 'Report Progress',
     icon: Icons.progress(),
@@ -33,46 +50,56 @@ export async function ReviewQueueView() {
     size: 'sm',
     onClick: () => AppRouter.navigate('/progress/new')
   });
-  header.appendChild(newReportBtn);
+  actionsDiv.appendChild(newReportBtn);
+  header.appendChild(actionsDiv);
   container.appendChild(header);
 
-  // Tabs Bar
+  // Tabs Bar Container
   let currentTab = 'all';
-  const allItems = await ReviewService.getReviewQueue('all');
+  const tabsContainer = document.createElement('div');
+  container.appendChild(tabsContainer);
 
-  const counts = {
-    all: allItems.length,
-    'high-confidence': allItems.filter(i => i.tabCategory === 'high-confidence').length,
-    'needs-review': allItems.filter(i => i.tabCategory === 'needs-review' || i.state === 'needs-review').length,
-    'ambiguous': allItems.filter(i => i.tabCategory === 'ambiguous' || i.state === 'ambiguous').length,
-    'unmatched': allItems.filter(i => i.tabCategory === 'unmatched' || i.state === 'unmatched').length,
-    'rejected': allItems.filter(i => i.tabCategory === 'rejected' || i.state === 'rejected').length
-  };
+  function updateTabs(allItems) {
+    tabsContainer.innerHTML = '';
+    const counts = {
+      all: allItems.length,
+      'high-confidence': allItems.filter(i => i.tabCategory === 'high-confidence').length,
+      'needs-review': allItems.filter(i => i.tabCategory === 'needs-review' || i.state === 'needs-review').length,
+      'ambiguous': allItems.filter(i => i.tabCategory === 'ambiguous' || i.state === 'ambiguous').length,
+      'unmatched': allItems.filter(i => i.tabCategory === 'unmatched' || i.state === 'unmatched').length,
+      'rejected': allItems.filter(i => i.tabCategory === 'rejected' || i.state === 'rejected').length
+    };
 
-  const tabsNav = Tabs({
-    tabs: [
-      { id: 'all', label: 'All Items', count: counts.all },
-      { id: 'high-confidence', label: 'High Confidence', count: counts['high-confidence'] },
-      { id: 'needs-review', label: 'Needs Review', count: counts['needs-review'] },
-      { id: 'ambiguous', label: 'Ambiguous', count: counts['ambiguous'] },
-      { id: 'unmatched', label: 'Unmatched', count: counts['unmatched'] },
-      { id: 'rejected', label: 'Rejected', count: counts['rejected'] }
-    ],
-    activeTab: currentTab,
-    onTabChange: (tabId) => {
-      currentTab = tabId;
-      renderTable();
-    }
-  });
-  container.appendChild(tabsNav);
+    const tabsNav = Tabs({
+      tabs: [
+        { id: 'all', label: 'All Items', count: counts.all },
+        { id: 'high-confidence', label: 'High Confidence', count: counts['high-confidence'] },
+        { id: 'needs-review', label: 'Needs Review', count: counts['needs-review'] },
+        { id: 'ambiguous', label: 'Ambiguous', count: counts['ambiguous'] },
+        { id: 'unmatched', label: 'Unmatched', count: counts['unmatched'] },
+        { id: 'rejected', label: 'Rejected', count: counts['rejected'] }
+      ],
+      activeTab: currentTab,
+      onTabChange: (tabId) => {
+        currentTab = tabId;
+        renderTable(false);
+      }
+    });
+    tabsContainer.appendChild(tabsNav);
+  }
 
   // Table Container
   const tableWrapper = document.createElement('div');
   container.appendChild(tableWrapper);
 
-  async function renderTable() {
+  async function renderTable(fetchFresh = true) {
+    tableWrapper.innerHTML = '<div class="p-4 text-center text-muted font-mono">Loading review queue...</div>';
+    const all = await ReviewService.getReviewQueue('all');
+    updateTabs(all);
+    const items = currentTab === 'all' 
+      ? all 
+      : all.filter(i => i.tabCategory === currentTab || i.state === currentTab);
     tableWrapper.innerHTML = '';
-    const items = await ReviewService.getReviewQueue(currentTab);
 
     const columns = [
       {

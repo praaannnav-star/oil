@@ -3,6 +3,22 @@ import { API } from './api.js';
 export const EvidenceService = {
   async getEvidence(activityId = null) {
     await API.delay();
+    if (!API.useMock && navigator.onLine) {
+      try {
+        const { ApiHttp } = await import('./http.js');
+        const remote = await ApiHttp.request(activityId ? `/evidence?activityId=${activityId}` : '/evidence');
+        if (Array.isArray(remote)) {
+          for (const ev of remote) {
+            const idx = API.evidence.findIndex(e => e.id === ev.id);
+            if (idx !== -1) API.evidence[idx] = ev;
+            else API.evidence.push(ev);
+          }
+          API.persist('evidence', true);
+        }
+      } catch (err) {
+        console.warn('Live evidence fetch failed, using local cache:', err.message);
+      }
+    }
     if (activityId) {
       return API.evidence.filter(e => e.activityId === activityId);
     }

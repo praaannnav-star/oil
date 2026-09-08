@@ -64,6 +64,18 @@ export const ReviewService = {
 
   async getReviewQueue(tabCategory = 'all') {
     await API.delay();
+    if (!API.useMock && navigator.onLine) {
+      try {
+        const { ApiHttp } = await import('./http.js');
+        const remote = await ApiHttp.request('/reviews');
+        if (Array.isArray(remote)) {
+          API.reviewItems = remote;
+          API.persist('reviewItems', true);
+        }
+      } catch (err) {
+        console.warn('Live reviews fetch failed, using local cache:', err.message);
+      }
+    }
     let items = API.reviewItems.map(i => this._enrichItem(i));
 
     if (tabCategory && tabCategory !== 'all') {
@@ -83,6 +95,21 @@ export const ReviewService = {
 
   async getReviewItem(id) {
     await API.delay();
+    if (!API.useMock && navigator.onLine) {
+      try {
+        const { ApiHttp } = await import('./http.js');
+        const remote = await ApiHttp.request(`/reviews/${id}`);
+        if (remote) {
+          const idx = API.reviewItems.findIndex(i => i.id === id);
+          if (idx !== -1) API.reviewItems[idx] = remote;
+          else API.reviewItems.unshift(remote);
+          API.persist('reviewItems', true);
+          return this._enrichItem(remote);
+        }
+      } catch (err) {
+        console.warn('Live review item fetch failed, using local cache:', err.message);
+      }
+    }
     const item = API.reviewItems.find(i => i.id === id);
     return item ? this._enrichItem(item) : null;
   },
