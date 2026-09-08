@@ -31,12 +31,13 @@ class SyncManager {
 
     try {
       // Fetch all collections from the backend
-      const [projects, activities, reports, reviewItems, surveys] = await Promise.all([
+      const [projects, activities, reports, reviewItems, surveys, evidence] = await Promise.all([
         ApiHttp.request('/projects'),
         ApiHttp.request('/activities'),
         ApiHttp.request('/reports'),
         ApiHttp.request('/reviews'),
-        ApiHttp.request('/surveys')
+        ApiHttp.request('/surveys'),
+        ApiHttp.request('/evidence')
       ]);
 
       // Update in-memory state
@@ -45,6 +46,7 @@ class SyncManager {
       API.reports = reports || [];
       API.reviewItems = reviewItems || [];
       API.surveys = surveys || [];
+      API.evidence = evidence || [];
 
       // Update local storage
       API.persist('projects', true);
@@ -52,6 +54,7 @@ class SyncManager {
       API.persist('reports', true);
       API.persist('reviewItems', true);
       API.persist('surveys', true);
+      API.persist('evidence', true);
 
       console.log('Successfully pulled remote state into local IndexedDB cache.');
       API._hydrated = true;

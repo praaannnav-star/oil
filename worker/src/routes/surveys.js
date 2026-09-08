@@ -125,6 +125,19 @@ export default [
         detail: `${templateName} (${Object.keys(answers).length} responses${photos.length ? `, ${photos.length} photo(s)` : ''})`
       });
 
+      // Insert photos into the evidence table so they can be viewed uniformly
+      for (const photo of photos) {
+        const evId = `EVD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        await db.prepare(
+          `INSERT INTO evidence (id, report_id, activity_id, activity_name, project_id, url, public_id,
+             type, filename, location_meta, uploaded_by, status)
+           VALUES (?, ?, NULL, NULL, ?, ?, NULL, ?, ?, ?, ?, 'pending')`
+        ).bind(
+          evId, id, body.projectId, photo.url, photo.type || null, photo.filename || 'Survey Photo',
+          body.geo ? `Lat: ${body.geo.lat}, Lng: ${body.geo.lng}` : null, body.submittedBy || user.name
+        ).run();
+      }
+
       return json({ id, status: 'submitted', reviewItemId: reviewId }, 201);
     }
   }
