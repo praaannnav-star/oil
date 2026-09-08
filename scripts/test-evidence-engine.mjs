@@ -27,23 +27,31 @@ async function runTest() {
 
   // 2. Submit a report with a data URI (simulating a photo of concrete pouring)
   console.log('\n[2] Submitting field report with simulated photo evidence...');
-  // A tiny 1x1 transparent GIF just for testing to see if Vision AI processes it.
-  // Actually, Llama vision might reject non-photographic images with "I cannot see anything", but it should return a structured JSON regardless!
-  const dummyImageB64 = "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
-  const dataUri = `data:image/gif;base64,${dummyImageB64}`;
+  // Load the actual construction site photo (workers installing steel rebar on foundation)
+  console.log('   -> Loading real construction photo of foundation rebar...');
+  let imgBuffer;
+  const fs = await import('fs');
+  if (fs.existsSync('construction_real.jpg')) {
+    imgBuffer = fs.readFileSync('construction_real.jpg');
+  } else {
+    const imgRes = await fetch('https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=500&auto=format&fit=crop&q=60');
+    imgBuffer = Buffer.from(await imgRes.arrayBuffer());
+  }
+  const base64 = Buffer.from(imgBuffer).toString('base64');
+  const dataUri = `data:image/jpeg;base64,${base64}`;
 
   const reportPayload = {
     projectId: 'PRJ-TEST-001',
     author: 'Test Script',
-    rawTranscript: 'Concrete pouring completed for Foundation B2. 100% done.',
+    rawTranscript: 'Foundation steel rebar reinforcement and formwork installation completed by the team on site. 100% completed.',
     extractedEvent: {
       discipline: 'Civil',
-      activity: 'Foundation B2 Concrete Pour',
+      activity: 'Foundation Rebar Reinforcement',
       status: 'Completed',
       date: new Date().toISOString().split('T')[0]
     },
     evidenceItems: [
-      { id: `EVD-TEST-${Date.now()}`, url: dataUri, filename: 'test_photo.gif', type: 'image/gif' }
+      { id: `EVD-TEST-${Date.now()}`, url: dataUri, filename: 'rebar_foundation.jpg', type: 'image/jpeg' }
     ]
   };
 
@@ -62,7 +70,9 @@ async function runTest() {
   // 3. Poll for AI Vision Verification Result
   console.log('\n[3] Polling for background AI Vision verification (ctx.waitUntil)...');
   let aiResult = null;
-  for (let i = 0; i < 15; i++) {
+  // Cloudflare Vision models (llava) can take up to 60+ seconds to cold start on the free tier.
+  // Polling 45 times * 2s = 90 seconds timeout.
+  for (let i = 0; i < 45; i++) {
     await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s between polls
     process.stdout.write('.');
     const reviewRes = await fetch(`${BASE_URL}/reviews/${reviewItemId}`, { headers });

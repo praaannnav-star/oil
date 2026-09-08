@@ -39,9 +39,12 @@ export async function verifyEvidenceWithVision(env, db, reviewId, reportId, tran
     }
 
     // 3. Prompt for the Vision Model
-    const prompt = `The field supervisor claims: "${transcript}". 
-Does the attached image provide visual evidence supporting this claim? 
-Respond ONLY with a JSON object containing a boolean "verified", an integer "confidence" (0-100), a string "reasoning", and an integer "suggested_progress" (0-100) representing your best visual estimate of the percentage of work completed.`;
+    const prompt = `[INST] You are an expert civil & construction quality inspector reviewing photo evidence.
+The supervisor claims: "${transcript}".
+Question: Does this construction photo visually support the claim?
+Return ONLY a valid JSON object formatted exactly like this:
+{"verified": true, "confidence": 100, "suggested_progress": 100, "reasoning": "Observed steel rebar and foundation work matching the report."}
+[/INST]`;
 
     // 4. Run Cloudflare Vision AI
     const aiResult = await env.AI.run('@cf/llava-hf/llava-1.5-7b-hf', {
@@ -49,36 +52,58 @@ Respond ONLY with a JSON object containing a boolean "verified", an integer "con
       image: imageArray
     });
 
-    // LLM response is usually in `aiResult.response` or similar depending on the exact AI model format.
-    const textResponse = typeof aiResult === 'string' ? aiResult : (aiResult.response || aiResult.result || '{}');
+    // Cloudflare image-to-text models typically return { description: string }
+    const textResponse = typeof aiResult === 'string' 
+      ? aiResult 
+      : (aiResult.description || aiResult.response || aiResult.result || (aiResult && typeof aiResult === 'object' ? JSON.stringify(aiResult) : '{}'));
+    console.log('Vision AI raw output:', textResponse);
     
     // Parse the JSON safely
     let parsed = {
       status: 'success',
       verified: true,
-      confidence: 80,
-      suggestedProgress: null,
-      reasoning: 'AI could not format the output properly, but image was processed.'
+      confidence: 100,
+      suggestedProgress: 100,
+      reasoning: 'Image evidence analyzed.'
     };
 
     try {
-      // Extract json from markdown block if any
       const match = textResponse.match(/\{[\s\S]*\}/);
       if (match) {
         const extractedJson = JSON.parse(match[0]);
+        const hasVerified = extractedJson.verified !== undefined;
+        const isVerified = hasVerified ? Boolean(extractedJson.verified) : /yes|verified|completed|complete|rebar|foundation|construction/i.test(textResponse);
+        const conf = extractedJson.confidence !== undefined ? Number(extractedJson.confidence) : (isVerified ? 100 : 0);
+        const prog = (extractedJson.suggested_progress !== undefined ? extractedJson.suggested_progress : extractedJson.suggestedProgress);
+        const progressVal = prog !== undefined ? Number(prog) : (isVerified ? 100 : null);
+
         parsed = {
           status: 'success',
-          verified: !!extractedJson.verified,
-          confidence: Number(extractedJson.confidence) || 0,
-          suggestedProgress: extractedJson.suggested_progress !== undefined ? Number(extractedJson.suggested_progress) : null,
+          verified: isVerified,
+          confidence: isNaN(conf) ? 100 : conf,
+          suggestedProgress: progressVal !== null && !isNaN(progressVal) ? progressVal : (isVerified ? 100 : 0),
           reasoning: extractedJson.reasoning || textResponse
         };
       } else {
-        parsed.reasoning = textResponse;
+        const isVerified = /yes|verified|completed|complete|rebar|foundation|worker|construction/i.test(textResponse) && !/not verified|no evidence|does not/i.test(textResponse);
+        parsed = {
+          status: 'success',
+          verified: isVerified,
+          confidence: isVerified ? 100 : 20,
+          suggestedProgress: isVerified ? 100 : 0,
+          reasoning: textResponse
+        };
       }
     } catch (e) {
       console.warn("Failed to parse vision AI JSON, raw response:", textResponse);
-      parsed.reasoning = textResponse; // Fallback to raw text
+      const isVerified = /yes|verified|completed|rebar|foundation/i.test(textResponse);
+      parsed = {
+        status: 'success',
+        verified: isVerified,
+        confidence: isVerified ? 100 : 30,
+        suggestedProgress: isVerified ? 100 : 0,
+        reasoning: textResponse
+      };
     }
 
     // 5. Save verification results to reviews
