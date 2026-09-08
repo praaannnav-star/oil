@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OIL Field Bridge - Landing Design Preview</title>
+  <style>
+    :root {
+      --ink: #061019;
+      --ink-soft: #0b1b25;
+      --panel: rgba(7, 23, 32, .7);
+      --line: rgba(255, 255, 255, .15);
+      --text: #f4f8f5;
+      --muted: #a9b9b5;
+      --oil-red: #e0291d;
+      --amber: #f2ad2b;
+      --teal: #31c89b;
+      --radius: 18px;
+      --display: Georgia, 'Times New Roman', serif;
+      --sans: 'Segoe UI', Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--ink); }
+    body { margin: 0; background: var(--ink); color: var(--text); font-family: var(--sans); }
+    button { font: inherit; }
+    .scene { position: fixed; inset: 0; overflow: hidden; background: radial-gradient(circle at 50% 0%, #213d42 0%, var(--ink) 48%, #020608 100%); }
+    #industrial-scene { width: 100%; height: 100%; display: block; opacity: .94; }
+    .scene::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(2, 7, 11, .87), rgba(2, 7, 11, .25) 58%, rgba(2, 7, 11, .54)), linear-gradient(0deg, rgba(2, 7, 11, .86), transparent 45%); }
+    .landing { position: relative; min-height: 100vh; isolation: isolate; overflow: hidden; }
+    .topbar, .hero, .signals, .roles, .trust { width: min(1180px, calc(100% - 40px)); margin-inline: auto; position: relative; z-index: 1; }
+    .topbar { height: 88px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,.12); }
+    .brand { display: flex; align-items: center; gap: 12px; font-size: 12px; font-weight: 800; letter-spacing: .15em; }
+    .brand img { width: 44px; height: 44px; object-fit: contain; padding: 5px; border-radius: 50%; background: #fff; }
+    .status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+    .status i { width: 9px; height: 9px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 18px var(--teal); }
+    .hero { min-height: 580px; display: grid; align-content: center; max-width: min(1180px, calc(100% - 40px)); padding: 82px 0 90px; }
+    .eyebrow { color: var(--amber); font-size: 11px; letter-spacing: .18em; font-weight: 800; }
+    h1 { width: min(720px, 100%); margin: 18px 0; font: 700 clamp(3.1rem, 7.5vw, 6.5rem)/.9 var(--display); letter-spacing: -.065em; }
+    h1 em { display: block; color: var(--amber); font-style: normal; }
+    .hero-copy { max-width: 580px; color: var(--muted); font-size: 18px; line-height: 1.6; }
+    .actions { display: flex; flex-wrap: wrap; gap: 13px; margin-top: 32px; }
+    .button { min-height: 48px; padding: 0 21px; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); color: var(--text); background: rgba(8, 27, 37, .7); font-weight: 800; transition: transform .2s ease, background .2s ease; }
+    .button:hover { transform: translateY(-2px); background: rgba(26, 58, 66, .9); }
+    .button.primary { border-color: var(--oil-red); background: var(--oil-red); box-shadow: 0 10px 35px rgba(224,41,29,.3); }
+    .button.primary:hover { background: #bd2117; }
+    .scroll-link { align-self: center; color: var(--text); font-size: 13px; font-weight: 700; text-decoration: none; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 76px; color: var(--muted); font-size: 11px; letter-spacing: .09em; text-transform: uppercase; }
+    .hero-meta b { color: var(--teal); margin-right: 7px; }
+    .section { padding: 80px 0; position: relative; z-index: 1; }
+    .section-label { margin: 0 0 20px; color: var(--amber); font-size: 11px; font-weight: 800; letter-spacing: .16em; }
+    .section-title { max-width: 680px; margin: 0 0 30px; font: 700 clamp(2rem, 4vw, 3.8rem)/1 var(--display); letter-spacing: -.04em; }
+    .signals { display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid var(--line); background: rgba(4, 17, 24, .6); backdrop-filter: blur(12px); }
+    .signal { padding: 26px 22px; border-right: 1px solid var(--line); min-height: 170px; }
+    .signal:last-child { border-right: 0; }
+    .signal-number { color: var(--teal); font: 700 38px/1 var(--display); }
+    .signal h3 { margin: 18px 0 7px; font-size: 14px; }
+    .signal p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .roles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; }
+    .role { min-height: 260px; padding: 25px; text-align: left; border: 1px solid var(--line); border-radius: var(--radius); color: var(--text); cursor: pointer; background: linear-gradient(145deg, rgba(19, 51, 59, .72), rgba(4, 16, 23, .74)); transition: transform .25s ease, border-color .25s ease; }
+    .role:hover { transform: translateY(-5px); border-color: var(--amber); }
+    .role-icon { display: grid; width: 45px; height: 45px; place-items: center; border-radius: 12px; background: rgba(242,173,43,.13); color: var(--amber); font-size: 22px; }
+    .role h3 { margin: 54px 0 8px; font: 700 24px var(--display); }
+    .role p { margin: 0; color: var(--muted); line-height: 1.5; font-size: 13px; }
+    .trust { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 18px; padding: 32px 0 44px; color: var(--muted); border-top: 1px solid var(--line); font-size: 12px; }
+    .trust span::before { content: '◆'; color: var(--oil-red); margin-right: 8px; }
+    .notice { position: fixed; right: 20px; bottom: 20px; z-index: 2; max-width: 290px; padding: 13px 15px; border: 1px solid rgba(242,173,43,.4); border-radius: 12px; background: rgba(7, 23, 32, .9); color: var(--muted); font-size: 12px; line-height: 1.4; }
+    .notice b { color: var(--amber); }
+    @media (max-width: 900px) { .signals { grid-template-columns: repeat(3, 1fr); }.signal:nth-child(3) { border-right: 0; }.roles { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 620px) { .topbar, .hero, .signals, .roles, .trust { width: min(100% - 28px, 1180px); }.topbar { height: 70px; }.brand { font-size: 10px; }.status { display: none; }.hero { min-height: 560px; padding-top: 68px; }.hero-copy { font-size: 16px; }.hero-meta { margin-top: 50px; gap: 12px; }.signals, .roles { grid-template-columns: 1fr; }.signal, .signal:nth-child(3) { border-right: 0; border-bottom: 1px solid var(--line); }.signal:last-child { border-bottom: 0; }.role { min-height: 190px; }.role h3 { margin-top: 30px; }.notice { position: static; margin: 0 14px 20px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="scene" aria-hidden="true"><canvas id="industrial-scene"></canvas></div>
+  <main class="landing">
+    <header class="topbar">
+      <div class="brand"><img src="../assets/oil_logo.png" alt=""><span>OIL INDIA LIMITED<br>FIELD TO SCHEDULE BRIDGE</span></div>
+      <div class="status"><i></i> SYSTEM READY · OFFLINE CAPABLE</div>
+    </header>
+    <section class="hero">
+      <div class="eyebrow">SIH26122 · OPERATIONS INTELLIGENCE</div>
+      <h1>From field signal to <em>trusted delivery picture.</em></h1>
+      <p class="hero-copy">A connected operational layer for capturing field progress, linking it to L5/L6 schedules, and validating the evidence behind every decision.</p>
+      <div class="actions">
+        <!-- Map this button to AppRouter.navigate(Auth.isAuthenticated() ? '/overview' : '/login'). -->
+        <button class="button primary" id="enter-operations">Enter Operations</button>
+        <!-- Map this to PWA.promptInstall() when PWA.canPromptInstall() is true. -->
+        <button class="button" id="install-pwa">Install Field PWA</button>
+        <a class="scroll-link" href="#live-pipeline">Explore live pipeline ↓</a>
+      </div>
+      <div class="hero-meta"><span><b>01</b>Voice + vision capture</span><span><b>02</b>Evidence-backed reconciliation</span><span><b>03</b>Audit-ready delivery data</span></div>
+    </section>
+    <section class="section" id="live-pipeline">
+      <div class="topbar" style="height:auto;border:0;padding-bottom:28px;"><div><p class="section-label">LIVE PIPELINE</p><h2 class="section-title">Every update becomes an operational signal.</h2></div></div>
+      <div class="signals">
+        <article class="signal"><div class="signal-number" data-stat="reports">24</div><h3>Capture</h3><p>Field reports received from site teams.</p></article>
+        <article class="signal"><div class="signal-number" data-stat="activities">148</div><h3>Schedule Link</h3><p>L5/L6 activities available for matching.</p></article>
+        <article class="signal"><div class="signal-number" data-stat="evidence">61</div><h3>Evidence</h3><p>Verified evidence packets in the bridge.</p></article>
+        <article class="signal"><div class="signal-number" data-stat="reviews">03</div><h3>Review</h3><p>Items ready for planner validation.</p></article>
+        <article class="signal"><div class="signal-number" data-stat="reconciled">24</div><h3>Reconcile</h3><p>Reports processed into delivery context.</p></article>
+      </div>
+    </section>
+    <section class="section">
+      <div class="topbar" style="height:auto;border:0;padding-bottom:28px;"><div><p class="section-label">ROLE-BASED OPERATIONS</p><h2 class="section-title">One shared picture. Built for every delivery role.</h2></div></div>
+      <div class="roles">
+        <button class="role" data-role="Field Supervisor"><span class="role-icon">⌁</span><h3>Field Supervisor</h3><p>Capture updates, attach proof, and continue working when the network is unavailable.</p></button>
+        <button class="role" data-role="Planner"><span class="role-icon">⌘</span><h3>Planner</h3><p>Review explainable matches and maintain schedule confidence.</p></button>
+        <button class="role" data-role="Reviewer"><span class="role-icon">◎</span><h3>QA/QC Reviewer</h3><p>Validate evidence before a field update can affect delivery reporting.</p></button>
+        <button class="role" data-role="Executive"><span class="role-icon">↗</span><h3>Executive</h3><p>See derived delivery intelligence grounded in evidence, not status theatre.</p></button>
+      </div>
+    </section>
+    <footer class="trust"><span>Offline-first field workflow</span><span>Tamper-evident audit chain</span><span>Evidence linked to schedule</span><span>Oil India Limited · SIH26122</span></footer>
+  </main>
+  <aside class="notice"><b>Standalone design preview</b><br>This file is not imported by the active application. Buttons demonstrate intended integration points only.</aside>
+  <script>
+    // Preview-only hook: replace with API.getPublicStatsCached() during integration.
+    const previewStats = { reports: 24, activities: 148, evidence: 61, pendingReviews: 3 };
+    document.querySelector('[data-stat="reports"]').textContent = previewStats.reports;
+    document.querySelector('[data-stat="activities"]').textContent = previewStats.activities;
+    document.querySelector('[data-stat="evidence"]').textContent = previewStats.evidence;
+    document.querySelector('[data-stat="reviews"]').textContent = String(previewStats.pendingReviews).padStart(2, '0');
+    document.querySelector('[data-stat="reconciled"]').textContent = previewStats.reports;
+
+    // Exact rendering model from the supplied index.html reference: a WebGL
+    // ray-marched bridge, highway, and industrial pipeline corridor.
+    const canvas = document.getElementById('industrial-scene');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function syncSize() { const w = canvas.clientWidth || 1280; const h = canvas.clientHeight || 720; if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; } }
+    new ResizeObserver(syncSize).observe(canvas); syncSize();
+    if (gl) {
+      const vertex = `attribute vec2 a_position; varying vec2 v_texCoord; void main(){v_texCoord=a_position*.5+.5;gl_Position=vec4(a_position,0.,1.);}`;
+      const fragment = `precision highp float;
+uniform float u_time; uniform vec2 u_resolution; uniform vec2 u_mouse; varying vec2 v_texCoord;
+mat2 rot(float a){float s=sin(a),c=cos(a);return mat2(c,-s,s,c);} float hash(vec2 p){p=fract(p*vec2(127.1,311.7));p+=dot(p,p+45.32);return fract(p.x*p.y);} float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1.,0.)),f.x),mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.)),f.x),f.y);} float fbm(vec2 p){float v=0.,a=.5;mat2 m=rot(.37);for(int i=0;i<4;i++){v+=a*noise(p);p=m*p*2.05+vec2(.4,.2);a*=.5;}return v;}
+float sdBox(vec3 p,vec3 b){vec3 q=abs(p)-b;return length(max(q,0.))+min(max(q.x,max(q.y,q.z)),0.);} float map(vec3 p){float ground=p.y+2.2+.15*sin(p.x*1.5+u_time*.4)*cos(p.z*1.2);vec3 r=p;float deck=sdBox(r-vec3(0.,-.05,0.),vec3(1.4,.08,100.));float rails=min(sdBox(r-vec3(-1.38,.15,0.),vec3(.06,.12,100.)),sdBox(r-vec3(1.38,.15,0.),vec3(.06,.12,100.)));float z=mod(p.z+6.,12.)-6.;vec3 q=vec3(p.x,p.y,z);float towers=min(min(sdBox(q-vec3(-1.8,1.4,0.),vec3(.14,2.,.18)),sdBox(q-vec3(1.8,1.4,0.),vec3(.14,2.,.18))),min(sdBox(q-vec3(0.,3.2,0.),vec3(1.9,.15,.16)),min(sdBox(q-vec3(-1.4,-1.2,0.),vec3(.25,1.1,.35)),sdBox(q-vec3(1.4,-1.2,0.),vec3(.25,1.1,.35)))));float pipe=length(p.xy-vec2(2.6,-.6))-.28;pipe=min(pipe,length(vec2(length(p.xy-vec2(2.6,-.6))-.33,mod(p.z+1.,2.)-1.))-.05);pipe=min(pipe,length(p.xy-vec2(-2.5,-.4))-.18);pipe=min(pipe,length(p.xy-vec2(-2.5,-.9))-.18);return min(min(ground,min(deck,rails)),min(towers,pipe));}
+void main(){vec2 uv=(gl_FragCoord.xy-.5*u_resolution.xy)/min(u_resolution.x,u_resolution.y);float cam=u_time*2.2;vec2 mo=u_mouse/u_resolution-.5;vec3 ro=vec3(mo.x*1.5,1.2+mo.y*.8,cam),target=vec3(sin(u_time*.3)*.4,.4,cam+8.),f=normalize(target-ro),r=normalize(cross(vec3(0.,1.,0.),f)),up=cross(f,r),rd=normalize(f*1.25+r*uv.x+up*uv.y);float t=0.,d=0.;int hit=0;for(int i=0;i<54;i++){vec3 p=ro+rd*t;d=map(p);if(d<.007){hit=1;break;}t+=d*.82;if(t>24.)break;}vec3 dark=vec3(.02,.025,.05),violet=vec3(.88,.46,1.),green=vec3(0.,.86,.46),pink=vec3(.91,.045,.38),col=mix(dark,vec3(.07,.025,.08),uv.y+.5);if(hit==1){vec3 p=ro+rd*t;vec2 e=vec2(.01,0.);vec3 n=normalize(vec3(map(p+e.xyy)-map(p-e.xyy),map(p+e.yxy)-map(p-e.yxy),map(p+e.yyx)-map(p-e.yyx)));float diff=max(dot(n,normalize(vec3(.6,1.2,-.7))),0.),spec=pow(max(dot(reflect(-normalize(vec3(.6,1.2,-.7)),n),-rd),0.),16.),fr=pow(1.-max(dot(-rd,n),0.),2.2);vec3 base=vec3(.07,.08,.11),g=vec3(0.);if(abs(p.y)<.25&&abs(p.x)<1.45){base=vec3(.05,.06,.085);g+=green*step(abs(p.x),.04)*step(fract((p.z-cam*.2)*.4),.55)*2.2;g+=violet*(smoothstep(.04,0.,abs(p.x+1.2))+smoothstep(.04,0.,abs(p.x-1.2)))*1.6;g+=pink*smoothstep(.88,.99,sin((p.z-u_time*14.)*.6)*.5+.5)*smoothstep(.28,0.,abs(p.x-.6))*3.5;g+=green*smoothstep(.86,.99,sin((p.z+u_time*11.)*.7)*.5+.5)*smoothstep(.28,0.,abs(p.x+.6))*3.2;}if(p.y>.25||abs(p.x)>1.4){base=vec3(.08,.09,.13);g+=violet*fr*.9;if(p.y>3.)g+=pink*(sin(u_time*4.)*.5+.5)*1.5;}if(p.y<.1&&(abs(p.x)>1.9||abs(p.x)<.2)){base=vec3(.04,.05,.07);float pulse=smoothstep(.65,.98,sin(p.z*1.5-u_time*7.5));vec3 fluid=mix(green,violet,sin(p.z*.25+u_time*1.2)*.5+.5);g+=fluid*pulse*2.8+fr*fluid*1.1+pink*smoothstep(.85,.98,sin(p.z*3.1415))*.75;}col=base*(diff*.6+.4)+g+spec*violet*.6;col=mix(col,dark,smoothstep(4.,23.,t));}float cables=fract(uv.x*12.+uv.y*5.+u_time*.2);if(cables<.04&&uv.y>-.2&&uv.y<.55)col+=violet*smoothstep(.55,0.,uv.y)*smoothstep(-.2,.1,uv.y)*.35;float steam=smoothstep(.35,.8,fbm(uv*2.4+vec2(u_time*.06,-u_time*.18)+fbm(uv*3.8+vec2(-u_time*.08,-u_time*.28))));vec3 haze=mix(vec3(.04,.06,.1),violet*.4,sin(uv.x*3.+u_time*.8)*.5+.5);haze=mix(haze,pink*.35,clamp(uv.y*.6+.2,0.,.5));col=mix(col,haze,steam*.35);col*=.86+.14*cos(uv.y*3.1415);if(hash(uv+fract(u_time*.03))>.991)col+=mix(green,pink,fract(hash(uv)*100.))*.6;gl_FragColor=vec4(col,1.);}`;
+      const shader = (type, source) => { const s = gl.createShader(type); gl.shaderSource(s, source); gl.compileShader(s); return s; };
+      const program = gl.createProgram(); gl.attachShader(program, shader(gl.VERTEX_SHADER, vertex)); gl.attachShader(program, shader(gl.FRAGMENT_SHADER, fragment)); gl.linkProgram(program); gl.useProgram(program);
+      const buffer = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buffer); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+      const position = gl.getAttribLocation(program, 'a_position'); gl.enableVertexAttribArray(position); gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+      const time = gl.getUniformLocation(program, 'u_time'), resolution = gl.getUniformLocation(program, 'u_resolution'), mouseUniform = gl.getUniformLocation(program, 'u_mouse'); let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
+      addEventListener('mousemove', event => { const rect = canvas.getBoundingClientRect(); mouse = { x: (event.clientX - rect.left) / rect.width * canvas.width, y: (1 - (event.clientY - rect.top) / rect.height) * canvas.height }; });
+      function render(ms) { syncSize(); gl.viewport(0, 0, canvas.width, canvas.height); gl.uniform1f(time, reducedMotion ? 0 : ms * .001); gl.uniform2f(resolution, canvas.width, canvas.height); gl.uniform2f(mouseUniform, mouse.x, mouse.y); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); if (!reducedMotion) requestAnimationFrame(render); }
+      render(0);
+    }
+    document.querySelectorAll('.role, #enter-operations, #install-pwa').forEach(button => button.addEventListener('click', () => alert('Preview action only. The integrated page will use the existing router and PWA services.')));
+  </script>
+</body>
+</html>

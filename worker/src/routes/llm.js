@@ -11,7 +11,7 @@ import { json, err } from '../lib/http.js';
 import { extractRules, delayCauseRules } from '../lib/rules.js';
 import { EXTRACT_SYSTEM, SUMMARIZE_SYSTEM, DELAY_CAUSE_SYSTEM, TRANSCRIBE_HINT, CORRECT_SYSTEM, GEO_SYSTEM } from '../prompts.js';
 
-const LLM_MODEL = '@cf/meta/llama-3.1-8b-instruct';
+const LLM_MODEL = '@cf/meta/llama-3.1-8b-instruct-fp8';
 
 async function runLlmJson(env, system, payload, maxTokens = 400) {
   if (!env.AI) return null;
@@ -23,9 +23,16 @@ async function runLlmJson(env, system, payload, maxTokens = 400) {
     try {
       const res = await env.AI.run(LLM_MODEL, { messages, temperature: 0, max_tokens: maxTokens });
       const text = res.response ?? res.result ?? '';
+      
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) {
+        return JSON.parse(match[0]);
+      }
+      
       const cleaned = String(text).replace(/^```(?:json)?/m, '').replace(/```\s*$/m, '').trim();
       return JSON.parse(cleaned);
-    } catch {
+    } catch (e) {
+      console.error('runLlmJson Error on attempt', attempt, e);
       // JSON drift -> retry once, then rules fallback handles it.
     }
   }
