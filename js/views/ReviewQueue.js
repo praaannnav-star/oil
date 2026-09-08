@@ -365,6 +365,7 @@ export async function ReviewQueueView() {
             <strong class="text-xs text-primary">Cloudflare Vision AI Analyzing...</strong>
             <span class="text-xs text-muted font-mono">Cross-referencing photo pixels with transcript claim.</span>
           </div>
+          <button id="btn-refresh-ai" class="btn btn-ghost btn-sm" title="Refresh Status">🔄 Refresh</button>
         </div>
       `;
     }
@@ -385,6 +386,20 @@ export async function ReviewQueueView() {
       evBox.appendChild(evGrid);
     }
     drawerContent.appendChild(evBox);
+
+    const refreshBtn = evBox.querySelector('#btn-refresh-ai');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', async () => {
+        refreshBtn.disabled = true;
+        refreshBtn.textContent = '...';
+        await ReviewService.getReviewQueue(currentTab); // trigger a pull
+        drawer.close();
+        // Re-open this specific drawer by simulating a click or re-rendering it
+        const updatedItem = await ReviewService.getReviewItem(item.id);
+        if (updatedItem) openReviewDrawer(updatedItem);
+        renderTable(); // Keep background table fresh
+      });
+    }
 
     // Section 4: Verified Progress Assessor (Slider)
     let progressVal = item.extractedEvent?.status === 'Completed' ? 100 : (item.topMatch?.progress || 0);
