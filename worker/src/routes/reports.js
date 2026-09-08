@@ -119,16 +119,33 @@ function resolveReviewerRole(discipline) {
         suggestedReviewerRole: suggestedRole
       };
 
+      const initialAiVerification = evidenceIds.length > 0
+        ? {
+            status: 'pending',
+            verified: false,
+            confidence: 0,
+            suggestedProgress: null,
+            reasoning: 'Cloudflare Vision AI Analyzing evidence...'
+          }
+        : {
+            status: 'no_visual_evidence',
+            verified: false,
+            confidence: 0,
+            suggestedProgress: null,
+            reasoning: 'No photographic evidence was attached to this report.'
+          };
+
       await db.prepare(
         `INSERT INTO reviews (id, report_id, type, source, reporter, discipline, extracted_json,
-           top_match_json, alternatives_json, state, tab_category, age)
-         VALUES (?, ?, 'report', ?, ?, ?, ?, ?, ?, 'needs-review', ?, 'Just now')`
+           top_match_json, alternatives_json, state, tab_category, age, ai_verification_json)
+         VALUES (?, ?, 'report', ?, ?, ?, ?, ?, ?, 'needs-review', ?, 'Just now', ?)`
       ).bind(
         reviewCreated, id, body.sourceLabel || 'Mobile Field App', body.author || user.name,
         extracted.discipline || 'Civil', JSON.stringify(enrichedExtracted),
         JSON.stringify(matched ? { ...matched, confidence, signals: body.signals || [] } : null),
         JSON.stringify(body.alternatives || []),
-        confidence >= 80 ? 'high-confidence' : 'needs-review'
+        confidence >= 80 ? 'high-confidence' : 'needs-review',
+        JSON.stringify(initialAiVerification)
       ).run();
 
       await audit.append({
@@ -142,13 +159,6 @@ function resolveReviewerRole(discipline) {
 
       if (evidenceIds.length > 0) {
         ctx.waitUntil(verifyEvidenceWithVision(env, db, reviewCreated, id, body.rawTranscript));
-      } else {
-        ctx.waitUntil(db.prepare("UPDATE reviews SET ai_verification_json = ? WHERE id = ?").bind(JSON.stringify({
-          status: 'no_visual_evidence',
-          verified: false,
-          confidence: 0,
-          reasoning: 'No photographic evidence was attached to this report.'
-        }), reviewCreated).run());
       }
 
       return json(

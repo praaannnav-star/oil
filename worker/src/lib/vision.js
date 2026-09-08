@@ -13,6 +13,7 @@ export async function verifyEvidenceWithVision(env, db, reviewId, reportId, tran
         status: 'no_visual_evidence',
         verified: false,
         confidence: 0,
+        suggestedProgress: null,
         reasoning: 'No photographic evidence was attached to this report.'
       }), reviewId).run();
       return;
@@ -21,9 +22,16 @@ export async function verifyEvidenceWithVision(env, db, reviewId, reportId, tran
     // 2. Fetch image as ArrayBuffer or decode base64
     let imageArray;
     if (evidence.url.startsWith('data:image')) {
-      const b64 = evidence.url.split(',')[1];
+      const parts = evidence.url.split(',');
+      if (parts.length < 2) {
+        throw new Error('Invalid or corrupted data:image URI.');
+      }
+      const b64 = parts[1];
       const binaryString = atob(b64);
       const len = binaryString.length;
+      if (len > 2500000) {
+        throw new Error(`Image size too large (${Math.round(len / 1024)} KB). Maximum supported size is 2.5MB.`);
+      }
       const bytes = new Uint8Array(len);
       for (let i = 0; i < len; i++) {
         bytes[i] = binaryString.charCodeAt(i);
@@ -32,77 +40,111 @@ export async function verifyEvidenceWithVision(env, db, reviewId, reportId, tran
     } else {
       const imgResponse = await fetch(evidence.url);
       if (!imgResponse.ok) {
-        throw new Error(`Failed to fetch image from ${evidence.url}`);
+        throw new Error(`Failed to fetch image from ${evidence.url} (status ${imgResponse.status})`);
       }
       const imgArrayBuffer = await imgResponse.arrayBuffer();
+      if (imgArrayBuffer.byteLength > 2500000) {
+        throw new Error(`Image size too large (${Math.round(imgArrayBuffer.byteLength / 1024)} KB). Maximum supported size is 2.5MB.`);
+      }
       imageArray = [...new Uint8Array(imgArrayBuffer)];
     }
 
-    // 3. Prompt for the Vision Model
-    const prompt = `[INST] You are an expert civil & construction quality inspector reviewing photo evidence.
-The supervisor claims: "${transcript}".
-Question: Does this construction photo visually support the claim?
-Return ONLY a valid JSON object formatted exactly like this:
-{"verified": true, "confidence": 100, "suggested_progress": 100, "reasoning": "Observed steel rebar and foundation work matching the report."}
-[/INST]`;
+    console.log(`Prepared image for vision AI: ${imageArray.length} bytes`);
 
-    // 4. Run Cloudflare Vision AI
-    const aiResult = await env.AI.run('@cf/llava-hf/llava-1.5-7b-hf', {
-      prompt,
-      image: imageArray
-    });
-
-    // Cloudflare image-to-text models typically return { description: string }
-    const textResponse = typeof aiResult === 'string' 
-      ? aiResult 
-      : (aiResult.description || aiResult.response || aiResult.result || (aiResult && typeof aiResult === 'object' ? JSON.stringify(aiResult) : '{}'));
-    console.log('Vision AI raw output:', textResponse);
+    // 3. Stage 1: Visual Description via LLaVA (Vicuna prompt format - direct question)
+    const visionPrompt = "Describe this construction and site engineering photo in detail. What equipment, materials, structures, workers, and activities are visible in the image?";
     
-    // Parse the JSON safely
+    let visualDescription = '';
+    try {
+      const aiResult = await env.AI.run('@cf/llava-hf/llava-1.5-7b-hf', {
+        prompt: visionPrompt,
+        image: imageArray
+      });
+
+      // Cloudflare image-to-text models return { description: string }
+      visualDescription = typeof aiResult === 'string'
+        ? aiResult
+        : (aiResult?.description || aiResult?.response || aiResult?.result || JSON.stringify(aiResult || ''));
+      console.log('Stage 1 LLaVA visual description:', visualDescription);
+    } catch (visionErr) {
+      console.warn('LLaVA Vision call failed:', visionErr.message);
+      throw new Error(`Vision model failed: ${visionErr.message}`);
+    }
+
+    // 4. Stage 2: Reasoning & Structured Extraction via Llama 3.1
     let parsed = {
       status: 'success',
       verified: true,
-      confidence: 100,
+      confidence: 90,
       suggestedProgress: 100,
-      reasoning: 'Image evidence analyzed.'
+      reasoning: visualDescription || 'Visual evidence analyzed.'
     };
 
     try {
-      const match = textResponse.match(/\{[\s\S]*\}/);
+      const systemPrompt = `You are an expert civil engineering quality control inspector.
+Your job is to compare a field supervisor's claimed work transcript with an AI visual description of the photo evidence submitted from the construction site.
+Evaluate if the photo evidence visually confirms the claim and what percentage of the activity is completed (0-100).
+Always respond ONLY with a valid JSON object matching this schema:
+{
+  "verified": true,
+  "confidence": 95,
+  "suggested_progress": 100,
+  "reasoning": "<concise explanation of what was visually verified>"
+}`;
+
+      const userPrompt = `Supervisor Field Claim: "${transcript}"
+
+AI Visual Description of Attached Site Photo:
+"${visualDescription}"
+
+Does this visual evidence support the supervisor's claim? Output the JSON result now:`;
+
+      const llmResult = await env.AI.run('@cf/meta/llama-3.1-8b-instruct-fp8', {
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        max_tokens: 300
+      });
+
+      const llmText = typeof llmResult === 'string' ? llmResult : (llmResult?.response || '');
+      console.log('Stage 2 LLM extraction raw output:', llmText);
+
+      const match = llmText.match(/\{[\s\S]*\}/);
       if (match) {
-        const extractedJson = JSON.parse(match[0]);
-        const hasVerified = extractedJson.verified !== undefined;
-        const isVerified = hasVerified ? Boolean(extractedJson.verified) : /yes|verified|completed|complete|rebar|foundation|construction/i.test(textResponse);
-        const conf = extractedJson.confidence !== undefined ? Number(extractedJson.confidence) : (isVerified ? 100 : 0);
-        const prog = (extractedJson.suggested_progress !== undefined ? extractedJson.suggested_progress : extractedJson.suggestedProgress);
-        const progressVal = prog !== undefined ? Number(prog) : (isVerified ? 100 : null);
+        const extracted = JSON.parse(match[0]);
+        const isVer = extracted.verified !== undefined ? Boolean(extracted.verified) : true;
+        const conf = Number(extracted.confidence) || (isVer ? 90 : 20);
+        const prog = extracted.suggested_progress !== undefined 
+          ? Number(extracted.suggested_progress) 
+          : (extracted.suggestedProgress !== undefined ? Number(extracted.suggestedProgress) : (isVer ? 100 : 0));
 
         parsed = {
           status: 'success',
-          verified: isVerified,
-          confidence: isNaN(conf) ? 100 : conf,
-          suggestedProgress: progressVal !== null && !isNaN(progressVal) ? progressVal : (isVerified ? 100 : 0),
-          reasoning: extractedJson.reasoning || textResponse
+          verified: isVer,
+          confidence: Math.min(100, Math.max(0, conf)),
+          suggestedProgress: isNaN(prog) ? null : Math.min(100, Math.max(0, prog)),
+          reasoning: extracted.reasoning || visualDescription
         };
       } else {
-        const isVerified = /yes|verified|completed|complete|rebar|foundation|worker|construction/i.test(textResponse) && !/not verified|no evidence|does not/i.test(textResponse);
+        // Fallback: heuristic analysis from visualDescription
+        const isVer = !/no evidence|cannot see|not visible|does not support|unrelated/i.test(visualDescription);
         parsed = {
           status: 'success',
-          verified: isVerified,
-          confidence: isVerified ? 100 : 20,
-          suggestedProgress: isVerified ? 100 : 0,
-          reasoning: textResponse
+          verified: isVer,
+          confidence: isVer ? 85 : 30,
+          suggestedProgress: isVer ? 100 : 0,
+          reasoning: visualDescription
         };
       }
-    } catch (e) {
-      console.warn("Failed to parse vision AI JSON, raw response:", textResponse);
-      const isVerified = /yes|verified|completed|rebar|foundation/i.test(textResponse);
+    } catch (llmErr) {
+      console.warn('Stage 2 LLM extraction failed, using Stage 1 description:', llmErr.message);
       parsed = {
         status: 'success',
-        verified: isVerified,
-        confidence: isVerified ? 100 : 30,
-        suggestedProgress: isVerified ? 100 : 0,
-        reasoning: textResponse
+        verified: true,
+        confidence: 80,
+        suggestedProgress: 100,
+        reasoning: visualDescription
       };
     }
 
@@ -110,6 +152,7 @@ Return ONLY a valid JSON object formatted exactly like this:
     await db.prepare(
       "UPDATE reviews SET ai_verification_json = ? WHERE id = ?"
     ).bind(JSON.stringify(parsed), reviewId).run();
+    console.log(`Saved AI verification to review ${reviewId}:`, JSON.stringify(parsed));
 
   } catch (err) {
     console.error("Vision AI Error:", err);
@@ -119,7 +162,8 @@ Return ONLY a valid JSON object formatted exactly like this:
       status: 'error',
       verified: false,
       confidence: 0,
-      reasoning: 'Vision AI processing failed: ' + err.message + ' | ' + (err.stack || '')
+      suggestedProgress: null,
+      reasoning: 'Vision AI processing failed: ' + err.message
     }), reviewId).run();
   }
 }

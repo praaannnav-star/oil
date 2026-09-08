@@ -359,38 +359,53 @@ export async function ReviewQueueView() {
     evBox.className = 'card p-3 gap-3';
     
     // AI Verification Result Header
-    if (item.aiVerification) {
-      const { verified, confidence, reasoning, status } = item.aiVerification;
-      if (status === 'no_visual_evidence') {
-        evBox.innerHTML = `
-          <div class="d-flex items-center gap-2 mb-2 p-2 rounded" style="background:var(--color-surface-hover); border:1px solid var(--color-warning);">
-            <span style="font-size:1.2rem;">⚠️</span>
-            <div class="d-flex flex-col">
-              <strong class="text-xs text-warning">No Visual Evidence Attached</strong>
-              <span class="text-xs text-muted font-mono">${escapeHtml(reasoning || 'Legacy report or missing photo.')}</span>
-            </div>
-          </div>
-        `;
-      } else {
-        const badgeColor = verified ? (confidence >= 80 ? 'success' : 'warning') : 'danger';
-        const icon = verified ? '✅' : '❌';
-        evBox.innerHTML = `
-          <div class="d-flex items-center gap-2 mb-2 p-2 rounded" style="background:var(--color-surface-hover); border:1px solid var(--color-${badgeColor});">
-            <span style="font-size:1.2rem;">${icon}</span>
-            <div class="d-flex flex-col flex-1">
-              <strong class="text-xs text-${badgeColor}">AI Visual Analysis: ${verified ? 'Verified Match' : 'Mismatch detected'} (${confidence || 0}% Confidence)</strong>
-              <span class="text-xs text-muted mt-1 font-mono">${escapeHtml(reasoning || '')}</span>
-            </div>
-          </div>
-        `;
-      }
-    } else {
+    const aiStatus = item.aiVerification?.status;
+    const isPending = !item.aiVerification || aiStatus === 'pending';
+    const isNoEvidence = aiStatus === 'no_visual_evidence';
+    const isError = aiStatus === 'error';
+
+    if (isPending) {
       evBox.innerHTML = `
         <div class="d-flex items-center gap-2 mb-2 p-2 rounded" style="background:var(--color-surface-hover); border:1px dashed var(--color-primary-dim);">
           <span style="font-size:1.2rem;" class="animate-pulse">⏳</span>
           <div class="d-flex flex-col flex-1">
             <strong class="text-xs text-primary">Cloudflare Vision AI Analyzing...</strong>
-            <span class="text-xs text-muted font-mono">Cross-referencing photo pixels with transcript claim.</span>
+            <span class="text-xs text-muted font-mono">${escapeHtml(item.aiVerification?.reasoning || 'Cross-referencing photo pixels with transcript claim.')}</span>
+          </div>
+          <button id="btn-refresh-ai" class="btn btn-ghost btn-sm" title="Refresh Status">🔄 Refresh</button>
+        </div>
+      `;
+    } else if (isNoEvidence) {
+      evBox.innerHTML = `
+        <div class="d-flex items-center gap-2 mb-2 p-2 rounded" style="background:var(--color-surface-hover); border:1px solid var(--color-warning);">
+          <span style="font-size:1.2rem;">⚠️</span>
+          <div class="d-flex flex-col flex-1">
+            <strong class="text-xs text-warning">No Visual Evidence Attached</strong>
+            <span class="text-xs text-muted font-mono">${escapeHtml(item.aiVerification?.reasoning || 'No photographic evidence was attached to this report.')}</span>
+          </div>
+        </div>
+      `;
+    } else if (isError) {
+      evBox.innerHTML = `
+        <div class="d-flex items-center gap-2 mb-2 p-2 rounded" style="background:var(--color-surface-hover); border:1px solid var(--color-danger);">
+          <span style="font-size:1.2rem;">⚠️</span>
+          <div class="d-flex flex-col flex-1">
+            <strong class="text-xs text-danger">Vision AI Analysis Error</strong>
+            <span class="text-xs text-muted mt-1 font-mono">${escapeHtml(item.aiVerification?.reasoning || 'Error processing image evidence.')}</span>
+          </div>
+          <button id="btn-refresh-ai" class="btn btn-ghost btn-sm" title="Retry">🔄 Retry</button>
+        </div>
+      `;
+    } else {
+      const { verified, confidence, reasoning } = item.aiVerification;
+      const badgeColor = verified ? (confidence >= 80 ? 'success' : 'warning') : 'danger';
+      const icon = verified ? '✅' : '❌';
+      evBox.innerHTML = `
+        <div class="d-flex items-center gap-2 mb-2 p-2 rounded" style="background:var(--color-surface-hover); border:1px solid var(--color-${badgeColor});">
+          <span style="font-size:1.2rem;">${icon}</span>
+          <div class="d-flex flex-col flex-1">
+            <strong class="text-xs text-${badgeColor}">AI Visual Analysis: ${verified ? 'Verified Match' : 'Mismatch detected'} (${confidence || 0}% Confidence)</strong>
+            <span class="text-xs text-muted mt-1 font-mono">${escapeHtml(reasoning || '')}</span>
           </div>
           <button id="btn-refresh-ai" class="btn btn-ghost btn-sm" title="Refresh Status">🔄 Refresh</button>
         </div>
@@ -419,6 +434,7 @@ export async function ReviewQueueView() {
       refreshBtn.addEventListener('click', async () => {
         refreshBtn.disabled = true;
         refreshBtn.textContent = '...';
+        cleanupPoll();
         await ReviewService.getReviewQueue(currentTab); // trigger a pull
         drawer.close();
         // Re-open this specific drawer by simulating a click or re-rendering it
@@ -481,6 +497,7 @@ export async function ReviewQueueView() {
           try {
             await ReviewService.approveMatch(item.id, progressVal); // Pass progressVal here!
             Toast.success('Activity match approved! Schedule baseline actuals reconciled.');
+            cleanupPoll();
             drawer.close();
             renderTable();
           } catch (err) {
@@ -498,6 +515,7 @@ export async function ReviewQueueView() {
           try {
             await ReviewService.rejectMatch(item.id, 'Discrepancy identified during planner inspection');
             Toast.warning('Activity match rejected.');
+            cleanupPoll();
             drawer.close();
             renderTable();
           } catch (err) {
@@ -513,12 +531,44 @@ export async function ReviewQueueView() {
       footerButtons.push(statusNote);
     }
 
+    let pollInterval = null;
+    function cleanupPoll() {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    }
+
     const drawer = Drawer({
       title: `Review Item: ${item.id}`,
       body: drawerContent,
       footer: footerButtons,
+      onClose: cleanupPoll,
       width: '620px'
     });
+
+    // Auto-poll if AI analysis is currently pending
+    if (isPending) {
+      let pollCount = 0;
+      pollInterval = setInterval(async () => {
+        pollCount++;
+        if (pollCount > 15) {
+          cleanupPoll();
+          return;
+        }
+        try {
+          const fresh = await ReviewService.getReviewItem(item.id);
+          if (fresh?.aiVerification && fresh.aiVerification.status !== 'pending') {
+            cleanupPoll();
+            drawer.close();
+            openReviewDrawer(fresh);
+            renderTable();
+          }
+        } catch (e) {
+          // ignore transient poll errors
+        }
+      }, 3500);
+    }
   }
 
   renderTable();
