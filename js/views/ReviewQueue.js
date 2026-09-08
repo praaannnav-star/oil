@@ -195,6 +195,11 @@ export async function ReviewQueueView() {
         <span class="badge badge-neutral font-semibold">👤 ${escapeHtml(role)}</span>
         ${urg.reason && urg.reason !== 'None' ? `<span class="text-muted ml-auto">Urgency note: <em>${escapeHtml(urg.reason)}</em></span>` : ''}
       </div>
+      ${item.geo ? `
+      <div class="d-flex items-center gap-1 text-xs" style="color:var(--color-success);">
+        📍 <span class="font-mono">GPS: ${escapeHtml(String(item.geo.lat))}, ${escapeHtml(String(item.geo.lng))} (±${escapeHtml(String(item.geo.accuracy))}m)</span>
+        <span class="text-muted">· captured ${escapeHtml(new Date(item.geo.at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'short', timeStyle: 'short' }))}</span>
+      </div>` : ''}
     `;
     drawerContent.appendChild(eventCard);
 

@@ -220,7 +220,8 @@ export const ReportsService = {
       reviewer: null,
       reviewedAt: null,
       evidenceItems: reportData.evidenceItems || [],
-      evidenceIds: []
+      evidenceIds: [],
+      geo: reportData.geo || null
     };
 
     // Always queue through local DB to ensure durability
