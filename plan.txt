@@ -334,3 +334,64 @@ T5. EXIT CRITERIA
    - stress.mjs prod-shell-only mode (skip API phases) for the Pages URL.
    - T2 quality gates (Lighthouse) need a browser run — not scriptable here.
 ================================================================================================
+
+================================================================================================
+ FULL TEST-DAY RESULTS (2026-08-23, "every possible test")
+------------------------------------------------------------------------------------------------
+ T-A SYNTAX SWEEP ....... 88 JS/MJS files node --check: 0 failures; package.json +
+                         manifest.json valid (name/icons intact).
+ T-B WORKER UNIT ........ 19/19 (JWT roundtrip, PBKDF2 verify, audit chain tamper,
+                         rules extraction, reconcile math, RBAC, idempotency keys).
+ T-C FUZZ CORPUS ........ 177/177, 0 findings (8 hostile-input classes).
+ T-D SMOKE LOCAL ........ 74/74 (shell completeness + manifest icons + SW).
+ T-E STRESS FULL-STACK .. fresh D1 -> wrangler dev :8787 -> conc 6:
+                         A auth 48 ops ok | B flood 239 ok | C review 160 ok |
+                         D classify/extract/delay-cause 180 ok | E surveys+evidence
+                         120 ok | G static x5 360 ok @400rps err 0.
+                         INVARIANTS: 240 unique report ids, fixed-id replay deduped,
+                         audit hash-chain VALID across 320 events, live stats derived.
+ T-F STRESS PROD ........ skip-mode vs master.oil-bridge-pwa.pages.dev conc 25:
+                         360 shell reqs ALL GREEN (p50 77ms / p95 523ms / max 734ms).
+ T-G PROD PROBE ......... 144 reqs x2 rounds, 0 errors, p50 76ms, p95 215ms.
+ T-H SMOKE PROD ......... 74/74 — every APP_SHELL asset exists on the deployment.
+ T-I SECURITY HDRS ...... nosniff + referrer-policy present; CSP/HSTS/XFO were
+                         ABSENT -> added `_headers` (XFO DENY, HSTS, Permissions-
+                         Policy camera/mic/geo, CSP Report-Only until browser audit).
+
+ DEPLOYMENT FINDINGS FIXED TODAY:
+   F-P1 CRITICAL: deployed api.js had useMock=false while Pages serves index.html
+        for /api/* (SPA fallback) -> login received HTML strings => broken auth
+        on production. FIX: runtime capability probe in ApiService._probeBackend()
+        (js/services/api.js) — init() now probes /api/stats/public and only
+        enables live mode on a genuine JSON response. Deployed demo restored;
+        Gate-0 deploy auto-flips to live with zero code changes.
+   F-P2 Headers gap -> _headers file added (see T-I). Enforce CSP after a real
+        browser pass confirms no inline-handler breakage.
+   NOTE: /api "presence" checks must inspect content-type — SPA fallback makes
+        status-200 HTML look like a healthy endpoint to naive probes.
+
+ STILL OPEN (unchanged): Gate 0 D1 database_id + wrangler deploy; Lighthouse/T2 in
+ a real browser; CSP Report-Only -> enforce decision post-audit.
+================================================================================================
+
+================================================================================================
+ VERIFY-LIVE ACCEPTANCE GATE (scripts/verify-live.mjs, 2026-08-23)
+------------------------------------------------------------------------------------------------
+ Purpose: proves the F-P1 capability-probe fix and gates every future deploy.
+   Part 1 offline decision matrix (mocked fetch): real JSON API / SPA-fallback
+     HTML / 404 / 5xx / network-dead / missing content-type -> useMock flips
+     correctly in all 6 shapes. RESULT TODAY: 6/6.
+   Part 2 target checks: W1 mode classification | W2 build-drift detector
+     (sha256 of key files local vs deployed) | W3 security-header audit
+     (--strict fails on gaps; default warns pre-redeploy) | W4 mini live e2e
+     auto-runs once a JSON backend exists: login -> extract -> replay dedupe.
+ RESULT vs master.oil-bridge-pwa.pages.dev: 9 passed / 0 failed / 5 warnings.
+   WARN build drift: js/services/api.js + js/services/activities.js changed
+   locally, NOT YET DEPLOYED -> next Pages push ships the auth-fix + NaN guards.
+   WARN headers absent until `_headers` ships with that same push.
+ USAGE:
+   node scripts/verify-live.mjs                    # pre-deploy sanity
+   node scripts/verify-live.mjs --strict           # CI gate post-Gate-0
+   node scripts/verify-live.mjs http://127.0.0.1:8787   # against wrangler dev
+ Exit code 0 = green; re-run after every deploy before tagging a release.
+================================================================================================

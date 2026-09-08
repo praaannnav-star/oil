@@ -1,115 +1,78 @@
-# Oil India Limited — Field to Schedule Bridge (SIH26122)
+# 🛢️ Oil India Limited — Field to Schedule Bridge (SIH26122)
 
-> **Intelligent Data Capture & Schedule-Linking Layer for Infrastructure Project Management: Real-Time Actual Progress Tracking**
+> **Intelligent Data Capture & Schedule-Linking Layer for Infrastructure Project Management**
 > 
-> **Organization:** Oil India Limited  
-> **Theme:** Smart Automation  
-> **Category:** Software  
-> **Problem Statement ID:** SIH26122
+> A Smart India Hackathon (SIH 2026) Solution tailored for Oil India Limited.
 
 ---
 
-## 🚀 Live Deployment
+## 📖 The Story (What is this and why does it exist?)
 
-The application is currently deployed and live on Cloudflare.
+Building massive infrastructure (like an Oil Rig or a Pipeline) is incredibly complex. There is a massive communication gap between the **AC Office** and the **Muddy Field**:
+* **The Planners (in the office):** Manage a master calendar (a "Schedule") with 10,000 tiny micro-tasks.
+* **The Field Workers (in the mud):** Are doing the actual work, but they are in remote locations with **zero internet** and no time to fill out complex software forms.
 
-- **Web Application (PWA):** [https://master.oil-bridge-pwa.pages.dev](https://master.oil-bridge-pwa.pages.dev)
-- **Backend API:** [https://oil-bridge-api.praaannnav.workers.dev/api](https://oil-bridge-api.praaannnav.workers.dev/api)
+**The Result:** A worker finishes a concrete foundation, but the office doesn't find out until two weeks later. The master calendar gets delayed, money is lost, and executives panic.
 
-*Note: Use the "1-Click Persona Login" cards on the landing page to instantly test different role-based views without needing a password.*
-
----
-
-## 🏗️ Overview & Architecture
-
-This application bridges the critical operational gap between **L5/L6 project schedules** and **real-time field progress**.
-
-```text
-Field Input (Voice/Text/Photos)
-    ↓
-AI Entity Extraction (Discipline, Activity, Volume, Dates)
-    ↓
-Schedule Linking & L5/L6 Matcher (Confidence Scoring & Explainability)
-    ↓
-Human Planner Validation (Review Queue & Drawer)
-    ↓
-Schedule Reconciliation & Deviation Detection (Variance, Cause & Corrective Actions)
-    ↓
-Tamper-Evident Audit Trail & Cross-Project Analytics
-```
-
-### Key Technical Pillars
-- **Zero-Dependency Architecture**: Built entirely with Vanilla HTML5, CSS3 (Custom Properties), and modern ES Modules.
-- **True PWA & Offline First**: IndexedDB (`oil-field-db`) local persistence, Service Worker caching, and background synchronization.
-- **Oil India Limited Brand System**: Clean, high-contrast industrial UI styled with official Oil India branding (Red `#E0291D`, Black `#111827`, White `#F9FAFB`).
-- **Explainable AI Matching**: Displays confidence gauges with deterministic signal badges (*Why this match?*).
+**Our Solution:** We built a "Bridge". It is an offline-capable mobile web app. A field worker pulls out their phone (even with no internet), taps a button, and speaks: *"Finished pouring concrete for Foundation B"*. When they drive back to town and get Wi-Fi, the app secretly sends this voice note to the cloud. An AI reads it, matches it to the exact task on the master calendar, and alerts the Planner to approve it. 
 
 ---
 
-## 🚀 How to Run Locally
+## ✨ The Magic Tricks (Core Features)
 
-Because Progressive Web Apps and Service Workers require an HTTP/HTTPS origin, serve the directory with any local static HTTP server:
+1. 📵 **100% Offline-First (PWA):** The app downloads itself to the phone. If a worker submits a report deep in the jungle, the app saves it in a hidden filing cabinet inside the browser (**IndexedDB**). 
+2. 🔄 **Background Sync:** The literal second the phone detects a 4G/Wi-Fi signal, the app wakes up, grabs the offline reports, and flushes them to the server automatically.
+3. 🧠 **AI Matcher (NLP):** The app reads the raw voice text, extracts the keywords (e.g., *Civil, 240 m³, Foundation B*), and scores it against the master calendar to suggest exactly which task was completed.
+4. 🔒 **Immutable Audit Trail:** Every approval is logged in a digital receipt book. If a project is delayed, executives can see exactly *who* approved *what* and *when*.
 
-### Option 1: Python (Recommended)
+---
+
+## 👥 A Shapeshifting App (The 5 Personas)
+
+Because this is used by an entire enterprise, the app uses **Role-Based Access Control (RBAC)** to completely change its interface depending on who logs in:
+
+1. 👷 **The Field Supervisor (The Worker):** Sees a simple, high-contrast screen. They tap "Report Progress", speak into the phone, snap a photo, and hit submit. No complex charts.
+2. 📅 **The Lead Planner (The Mastermind):** Sees a dual-screen workstation. They act as the Gatekeeper. They review the AI's suggested match, look at the worker's photo, and click "Approve" to officially update the Master Calendar.
+3. 🔎 **The QA/QC Reviewer (The Inspector):** Looks at the Evidence Gallery. Before a task is marked complete, they verify the safety and quality of the photos/documents.
+4. 👔 **The Executive / GM (The Big Boss):** Sees the Command Center dashboard. No data-entry buttons—just high-level health indicators, budgets, and alerts answering: *"Are we delayed, and how much is it costing us?"*
+5. 💻 **The System Admin (The IT Support):** Manages user accounts and has a special "Reset Demo Data" button to wipe the database for presentations.
+
+---
+
+## 🏗️ Under the Hood (Architecture)
+
+We intentionally used **0% heavy frontend frameworks** (No React, Vue, or Webpack) to ensure ultra-fast load times on low-end rugged devices.
+
+* **Frontend / UI:** 100% Vanilla HTML5, CSS3, and ES6 JavaScript Modules.
+* **Offline Engine:** Service Workers + IndexedDB.
+* **Physics Engine:** Custom 60fps HTML5 Canvas fluid simulation for the landing page.
+* **Backend / Cloud:** Cloudflare Workers (Edge Serverless API) + Cloudflare D1 (Edge SQLite Database).
+
+---
+
+## 🗺️ Beginner's Code Map (Where is everything?)
+
+* `index.html` — The empty container (The App Shell).
+* `js/views/` — The different screens (Dashboard, Capture Form, etc.).
+* `js/router.js` — The waiter that swaps the screens in and out without refreshing the page.
+* `js/services/` — The brain. Where the data logic, AI matching, and offline interceptors live.
+* `js/components/` — Reusable UI pieces (Buttons, Tables, Cards).
+* `worker/` — The Cloudflare backend API code and database schemas.
+
+---
+
+## 🚀 Quick Start (How to run it)
+
+Because Progressive Web Apps and ES Modules require a secure origin, you cannot just double-click the HTML file. You must run a local server:
+
+### Option 1: One-Click Windows Launcher
+Double-click `deploy-windows.bat` in the project folder. It will start the server and open the app as a native Windows desktop application.
+
+### Option 2: Python (Recommended)
+Open your terminal in the project folder and run:
 ```bash
 python -m http.server 8000
 ```
-Open **http://localhost:8000** in Google Chrome or Microsoft Edge.
+Then open your browser and go to: **http://localhost:8000/#/login**
 
-### Option 2: Node.js / npx
-```bash
-npx serve . -p 8000
-```
-
-### Option 3: Quick Launch Script (Windows)
-Double-click `start-server.bat` in the project root.
-
----
-
-## 📱 Features & Screen Tour
-
-1. **Executive Overview (`#/overview`)**:
-   - Portfolio KPIs (Active projects, delayed milestones, review backlog, evidence coverage).
-   - "What changed since yesterday?" situational awareness briefing.
-   - Cross-project health and active deviation tracker.
-
-2. **Schedule Explorer (`#/schedule`)**:
-   - Multi-tier Work Breakdown Structure navigation (L1 → L6).
-   - Planned vs. Actual progress tracking with SPI metrics.
-   - Filter by discipline, status, and search keywords.
-
-3. **Field Capture (`#/progress/new`)**:
-   - One-touch voice capture (Web Speech API) and structured text input.
-   - Real-time extraction of discipline, activity, status, and quantities.
-   - Pre-loaded one-click jury demo scenario (`Foundation B2 Pouring`).
-   - Camera/photo evidence upload with offline draft saving.
-
-4. **Review Queue (`#/review`)**:
-   - Tabbed queue (High Confidence, Needs Review, Ambiguous, Unmatched).
-   - Inspector drawer with candidate matching, explainability signals, and instant schedule reconciliation.
-
-5. **Activity Detail (`#/activities/:id`)**:
-   - Deep-dive tabs: Overview, Evidence Gallery, Review History, Deviations & Corrective Actions, and Audit Trail.
-
-6. **Intelligence & Memory (`#/analytics`, `#/memory`, `#/audit`)**:
-   - Planned vs Actual visual trend charts and milestone timelines.
-   - Historical duration variance analysis and recurring delay patterns.
-   - Tamper-evident, chronological change log.
-
----
-
-## 🎯 2-Minute Jury Demonstration Script (Section 37)
-
-1. Open **http://localhost:8000** in Chrome.
-2. Click **"Report Progress"** (or tap the bottom microphone button on mobile).
-3. Click **"Load Demo Scenario (Foundation B2)"** to simulate field reporting:
-   > *"Foundation B2 concreting completed today. Started at 8:30 AM and finished final pour at 5:15 PM with 240 m3 of M40 grade concrete."*
-4. Observe the extracted fields and the top recommended schedule link:
-   - **Matched Activity**: `CIV-B2-003: Foundation B2 Concrete Pouring & Testing`
-   - **Confidence**: `94% HIGH`
-   - **Signals**: Discipline match, Asset tag B2 match, Active schedule window.
-5. Click **"Submit for Review"**.
-6. Switch to the **Review Queue** (`#/review`), select the new report, and click **"Approve & Reconcile Schedule"**.
-7. Navigate to **Schedule Explorer** (`#/schedule`) or **Activity Detail** to see actuals updated, variance calculated (+2 days), and corrective actions logged.
-8. View **Executive Overview** (`#/overview`) to see updated portfolio metrics.
-# oil
+*(Tip: Click the "1-Click Persona Login" cards on the landing page to instantly test the different role-based views!)*

@@ -2,14 +2,31 @@
 // P1: all runtime collections are hydrated from IndexedDB on startup and
 // persisted (debounced) after every mutation, so state survives page refreshes.
 import { DB } from '../db.js';
+import { MOCK_PROJECTS } from '../data/mock-projects.js';
+import { MOCK_ACTIVITIES } from '../data/mock-activities.js';
+import { MOCK_REPORTS } from '../data/mock-reports.js';
+import { MOCK_EVIDENCE } from '../data/mock-evidence.js';
+import { MOCK_REVIEW_ITEMS } from '../data/mock-review.js';
+import { MOCK_AUDIT_LOG } from '../data/mock-audit.js';
+
+const SEEDS = {
+  projects: MOCK_PROJECTS,
+  activities: MOCK_ACTIVITIES,
+  reports: MOCK_REPORTS,
+  evidence: MOCK_EVIDENCE,
+  reviewItems: MOCK_REVIEW_ITEMS,
+  auditLogs: MOCK_AUDIT_LOG,
+  surveys: []
+};
 
 const COLLECTIONS = ['projects', 'activities', 'reports', 'evidence', 'reviewItems', 'auditLogs', 'surveys'];
 const PERSIST_DEBOUNCE_MS = 200;
 
 class ApiService {
   constructor() {
-    this.useMock = false; // Toggle to true to use IndexedDB local-only mode
+    this.useMock = true;
     this.baseUrl = '/api';
+    this._probePromise = null;
 
     // In-memory runtime state - hydrated in init() before first render
     this.projects = [];
@@ -48,8 +65,33 @@ class ApiService {
   // Called once from main.js before the router renders any view.
   async init() {
     if (this._initPromise) return this._initPromise;
-    this._initPromise = this._hydrate();
+    this._initPromise = this._probeBackend().then(() => this._hydrate());
     return this._initPromise;
+  }
+
+  // A real API answers /stats/public with JSON; the Pages SPA fallback
+  // answers with text/html. Only flip into live mode on a genuine JSON hit.
+  _probeBackend() {
+    if (this._probePromise) return this._probePromise;
+    this._probePromise = fetch(`${this.baseUrl}/stats/public`, {
+      headers: { Accept: 'application/json' }
+    })
+      .then(async res => {
+        const ct = res.headers.get('content-type') || '';
+        if (!res.ok || !ct.includes('application/json')) {
+          throw new Error(`no live backend (HTTP ${res.status}, ${ct || 'unknown type'})`);
+        }
+        return res.json();
+      })
+      .then(() => {
+        this.useMock = false;
+        console.info('[api] live Workers backend detected — live mode enabled');
+      })
+      .catch(err => {
+        this.useMock = true;
+        console.info('[api] no live backend yet — mock mode', err.message);
+      });
+    return this._probePromise;
   }
 
   async _hydrate() {
@@ -65,6 +107,12 @@ class ApiService {
       if (Array.isArray(stored) && stored.length > 0) {
         this[name] = stored;
         hasData = true;
+      } else {
+        // Fallback to seed data if empty
+        if (SEEDS[name]) {
+          this[name] = JSON.parse(JSON.stringify(SEEDS[name]));
+          this.persist(name, true);
+        }
       }
     }
     this._hydrated = true;

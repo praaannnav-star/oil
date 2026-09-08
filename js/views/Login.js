@@ -146,7 +146,7 @@ export function LoginView() {
       const user = Auth.quickLogin(role);
       State.setRole(user.role);
       Toast.success(`Authenticated as ${user.name} (${user.role})`);
-      AppRouter.navigate('/overview');
+      AppRouter.navigate(getPostLoginRoute());
     });
   });
 
@@ -164,7 +164,7 @@ export function LoginView() {
       errorBox.classList.add('d-none');
       State.setRole(result.user.role);
       Toast.success(`Welcome, ${result.user.name}! Access Granted.`);
-      AppRouter.navigate('/overview');
+      AppRouter.navigate(getPostLoginRoute());
     } else {
       errorBox.textContent = result.error;
       errorBox.classList.remove('d-none');
@@ -173,4 +173,10 @@ export function LoginView() {
   });
 
   return container;
+}
+
+function getPostLoginRoute() {
+  const route = sessionStorage.getItem('oil_redirect_route') || '/overview';
+  sessionStorage.removeItem('oil_redirect_route');
+  return route.startsWith('/') ? route : '/overview';
 }

@@ -10,6 +10,19 @@ class Database {
 
   async init() {
     return new Promise((resolve) => {
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        resolve(value);
+      };
+      // A blocked IndexedDB upgrade must never prevent the router from
+      // rendering. The app can still operate with its in-memory data.
+      const timeout = setTimeout(() => {
+        console.warn('IndexedDB initialization timed out; using in-memory storage.');
+        finish(null);
+      }, 1500);
       try {
         const request = window.indexedDB ? window.indexedDB.open(DB_NAME, DB_VERSION) : indexedDB.open(DB_NAME, DB_VERSION);
 
@@ -28,16 +41,20 @@ class Database {
 
         request.onsuccess = (e) => {
           this.db = e.target.result;
-          resolve(this.db);
+          finish(this.db);
         };
 
         request.onerror = (e) => {
           console.warn('IndexedDB init error (likely denied):', e);
-          resolve(null);
+          finish(null);
+        };
+        request.onblocked = () => {
+          console.warn('IndexedDB initialization blocked; using in-memory storage.');
+          finish(null);
         };
       } catch (err) {
         console.warn('IndexedDB exception (private mode or unsupported):', err);
-        resolve(null);
+        finish(null);
       }
     });
   }

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIH26122 - Technical Documentation</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            color: #111827;
+            max-width: 850px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+        h1, h2, h3 {
+            color: #E0291D;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 8px;
+        }
+        h1 { font-size: 2.2rem; margin-bottom: 5px; border-bottom: 2px solid #E0291D; }
+        .subtitle { font-size: 1.2rem; color: #4b5563; margin-top: 0; margin-bottom: 30px; font-weight: bold; }
+        code {
+            background-color: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9em;
+            color: #E0291D;
+        }
+        pre {
+            background-color: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9em;
+        }
+        ul { margin-bottom: 20px; }
+        li { margin-bottom: 8px; }
+        .page-break { page-break-before: always; }
+        
+        @media print {
+            body { padding: 0; margin: 20px; max-width: 100%; }
+            .no-print { display: none; }
+            h1, h2 { page-break-after: avoid; }
+            pre { background-color: #f3f4f6; color: #111827; border: 1px solid #d1d5db; white-space: pre-wrap; }
+            code { color: #111827; border: 1px solid #d1d5db; }
+        }
+
+        .btn-print {
+            display: inline-block;
+            background-color: #E0291D;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            margin-bottom: 20px;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn-print:hover { background-color: #b91c1c; }
+    </style>
+</head>
+<body>
+
+    <button class="no-print btn-print" onclick="window.print()">🖨️ Click Here to Save as PDF</button>
+
+    <h1>SOFTWARE REQUIREMENTS & TECHNICAL MANUAL</h1>
+    <p class="subtitle">Intelligent Data Capture & Schedule-Linking Layer (SIH26122) <br> Version 2.1.0 — Oil India Limited</p>
+
+    <h2>1. INTRODUCTION</h2>
+    <h3>1.1 Purpose</h3>
+    <p>This Software Requirements Specification (SRS) and Technical Manual provides a formal, comprehensive description of the software architecture, functional requirements, deployment instructions, and system interfaces for the <strong>Intelligent Data Capture & Schedule-Linking Layer</strong>.</p>
+    
+    <h3>1.2 Scope</h3>
+    <p>The software product is a mission-critical, offline-first Progressive Web Application (PWA) integrated with an edge serverless backend (Cloudflare Workers & D1 SQLite). It addresses the operational disconnect between macro-level project planning tools (Primavera P6) and micro-level field actuals (L5/L6 tasks) across high-value capital infrastructure projects.</p>
+
+    <h2>2. SYSTEM OVERVIEW & ARCHITECTURE</h2>
+    <p>The system is structured as a two-tier decoupled architecture:</p>
+    <ul>
+        <li><strong>Frontend PWA Client:</strong> A zero-dependency, modular Single Page Application (SPA) utilizing HTML5, CSS3, and native ES6 JavaScript modules. Runs client-side with full offline support via Service Workers and IndexedDB.</li>
+        <li><strong>Edge Backend API (<code>/worker</code>):</strong> An edge-serverless REST API running on Cloudflare Workers coupled with Cloudflare D1 (serverless relational SQLite).</li>
+    </ul>
+
+    <h3>System Topology Diagram</h3>
+    <pre>
+[ FIELD SUPERVISORS (Offline) ]  <---> [ Service Worker & IndexedDB ]
+                                                  | (Auto-syncs on connection)
+[ LEAD PLANNERS (Online) ]       <---> [ Cloudflare Edge Workers API ]
+                                                  |
+                                       [ Cloudflare D1 Database & AI Matcher ]
+    </pre>
+
+    <div class="page-break"></div>
+
+    <h2>3. FUNCTIONAL REQUIREMENTS</h2>
+    
+    <h3>Module 1: Authentication & Navigation</h3>
+    <ul>
+        <li>Role-restricted views spanning 5 roles (Admin, Executive/GM, Planner, Reviewer, Field Supervisor).</li>
+        <li>Route guards to prevent unauthorized access dynamically intercept and redirect.</li>
+    </ul>
+
+    <h3>Module 2: Field Data Capture & Voice Processing</h3>
+    <ul>
+        <li>Intuitive field intake form capturing: Project ID, Discipline, Location/Asset, Progress, Units, and Blockers.</li>
+        <li>One-click voice recording via Web Speech API, transcribing audio to text real-time.</li>
+        <li>Photo evidence capture directly via mobile device camera.</li>
+    </ul>
+
+    <h3>Module 3: Offline Engine & Background Synchronization</h3>
+    <ul>
+        <li>Service Worker implements <strong>Network-First with Cache Fallback</strong> strategy.</li>
+        <li>Offline submissions commit to IndexedDB <code>pendingReports</code> within &lt;100ms.</li>
+        <li>Background <code>SyncManager</code> auto-drains queued reports when network connectivity resumes.</li>
+    </ul>
+
+    <h3>Module 4: NLP Entity Extraction & Schedule-Linking Engine</h3>
+    <ul>
+        <li>Extracts entities: Discipline, Asset Tag, Work Type, Quantities, Blockers.</li>
+        <li>Multi-Signal Match Classifier calculates confidence scores based on fuzzy tag matching, semantic similarity, and schedule window proximity.</li>
+    </ul>
+
+    <h3>Module 5: Planner Reconciliation</h3>
+    <ul>
+        <li>Dual-pane Review Queue for planners to verify AI-suggested schedule mappings.</li>
+        <li>One-click approval updates schedule actuals and calculates variance against baseline automatically.</li>
+    </ul>
+
+    <h3>Module 6: Immutable Audit Trail</h3>
+    <ul>
+        <li>Every mutation creates an immutable audit record with IST timestamp, actor, role, and action detail, enabling a tamper-proof chain of custody.</li>
+    </ul>
+
+    <h2>4. DEPLOYMENT & SETUP INSTRUCTIONS</h2>
+    
+    <h3>Local & Desktop Deployment</h3>
+    <ol>
+        <li><strong>Prerequisites:</strong> Python 3.8+ installed.</li>
+        <li><strong>Launch:</strong> Open the project folder and double-click <code>deploy-windows.bat</code>.</li>
+        <li><strong>PWA Install:</strong> Open <code>http://localhost:8000/#/login</code> in Edge/Chrome, click "Install App" in the address bar to run as a native Windows application.</li>
+    </ol>
+
+    <h3>Cloud Deployment</h3>
+    <pre>
+# 1. Frontend (Cloudflare Pages):
+npx wrangler pages deploy . --project-name=oil-bridge-pwa
+
+# 2. Backend (Cloudflare Workers + D1):
+cd worker
+npx wrangler d1 create oil-db
+npx wrangler d1 execute oil-db --file=./schema.sql
+npx wrangler d1 execute oil-db --file=./seed.sql
+npx wrangler deploy
+    </pre>
+
+    <div class="page-break"></div>
+
+    <h2>5. ALGORITHMIC SPECIFICATIONS</h2>
+
+    <h3>Explainable Multi-Signal Schedule Matching Algorithm</h3>
+    <p>Calculates a composite score S between field report R and candidate schedule activities A:</p>
+    <pre>S(R, A) = (0.35 * TagMatch) + (0.25 * DisciplineMatch) + (0.25 * SemanticSim) + (0.15 * WindowProximity)</pre>
+
+    <h3>Canvas Fluid Simulation (Landing Page)</h3>
+    <p>Utilizes a coupled Spring-Mass Wave System to simulate viscous petroleum crude, computing Hooke's Restoring Acceleration, Euler Integration, and Neighbor Wave Coupling to render at 60fps using custom HTML5 Canvas quadratic curves.</p>
+
+    <h2>6. END-TO-END DATA FLOW</h2>
+    <ol>
+        <li><strong>Offline Capture:</strong> Field Supervisor records voice report without internet. Saves to IndexedDB.</li>
+        <li><strong>Background Sync:</strong> Device detects network. Service Worker pushes report to API.</li>
+        <li><strong>AI Extraction:</strong> Backend NLP isolates "Foundation B2", "240 m3", "Civil".</li>
+        <li><strong>Matcher:</strong> AI suggests mapping to Activity <code>ACT-CIV-B2-003</code> with 94% confidence.</li>
+        <li><strong>Reconciliation:</strong> Planner reviews and approves match.</li>
+        <li><strong>Audit:</strong> System logs event to cryptographic ledger. Executive dashboard updates instantly.</li>
+    </ol>
+
+</body>
+</html>

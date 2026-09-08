@@ -32,19 +32,25 @@ import { ProjectsService } from './services/projects.js';
 
 // Application Bootstrap
 document.addEventListener('DOMContentLoaded', async () => {
-  // 0. Hydrate persisted domain collections from IndexedDB before any view renders
-  await API.init();
+  // Hydrate persisted data without allowing a blocked storage backend to stop
+  // the router and leave users on an empty application shell.
+  await Promise.race([
+    API.init(),
+    new Promise(resolve => setTimeout(resolve, 2500))
+  ]);
 
   // 1. Initialize API HTTP session, PWA & Offline & Sync subsystems
-  try {
-    const { ApiHttp } = await import('./services/http.js');
-    await ApiHttp.init();
-  } catch (err) {
-    console.warn('ApiHttp initialization fallback:', err);
+  if (!API.useMock) {
+    try {
+      const { ApiHttp } = await import('./services/http.js');
+      await ApiHttp.init();
+    } catch (err) {
+      console.warn('ApiHttp initialization fallback:', err);
+    }
   }
-  await PWA.init();
+  await awaitStartup(PWA.init(), 'PWA registration');
   Offline.init();
-  await Sync.init();
+  await awaitStartup(Sync.init(), 'offline sync initialization');
 
   // If we are authenticated but have no projects locally, trigger a remote pull
   if (Auth.getUser() && API.projects.length === 0 && !API.useMock) {
@@ -82,6 +88,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   const mainContainer = document.getElementById('main-content');
   AppRouter.init(mainContainer);
 });
+
+async function awaitStartup(task, label, timeoutMs = 1500) {
+  let timer;
+  let timedOut = false;
+  try {
+    await Promise.race([
+      Promise.resolve(task).catch(error => console.warn(`${label} failed; continuing startup.`, error)),
+      new Promise(resolve => {
+        timer = setTimeout(() => {
+          timedOut = true;
+          resolve();
+        }, timeoutMs);
+      })
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+  // Startup helpers enhance the app, but routing must remain available if a
+  // browser API such as service workers or IndexedDB is slow or unavailable.
+  if (timedOut) console.warn(`${label} exceeded ${timeoutMs}ms; continuing startup.`);
+}
 
 function setupHeaderControls() {
   // Project Selector
