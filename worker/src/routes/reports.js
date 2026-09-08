@@ -3,6 +3,7 @@
 // POST /api/reports                    create report + review item + evidence links
 import { json, err } from '../lib/http.js';
 import { mapActivity, mapReport } from '../lib/d1.js';
+import { verifyEvidenceWithVision } from '../lib/vision.js';
 
 export default [
   {
@@ -33,7 +34,7 @@ export default [
     method: 'POST',
     pattern: '/api/reports',
     opts: { auth: true },
-    async handler({ body, db, user, audit }) {
+    async handler({ body, db, user, audit, env, ctx }) {
       if (!body?.rawTranscript) return err(400, 'rawTranscript is required');
 
       const id = body.id || `REP-${Date.now()}`;
@@ -138,6 +139,17 @@ function resolveReviewerRole(discipline) {
         role: user.role,
         detail: `Report: "${String(body.rawTranscript).slice(0, 100)}${String(body.rawTranscript).length > 100 ? '...' : ''}"${matched ? ` Linked with ${confidence}% confidence.` : ''}`
       });
+
+      if (evidenceIds.length > 0) {
+        ctx.waitUntil(verifyEvidenceWithVision(env, db, reviewCreated, id, body.rawTranscript));
+      } else {
+        ctx.waitUntil(db.prepare("UPDATE reviews SET ai_verification_json = ? WHERE id = ?").bind(JSON.stringify({
+          status: 'no_visual_evidence',
+          verified: false,
+          confidence: 0,
+          reasoning: 'No photographic evidence was attached to this report.'
+        }), reviewCreated).run());
+      }
 
       return json(
         { id, status, reviewItemId: reviewCreated, evidenceIds }, 201

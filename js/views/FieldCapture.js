@@ -407,6 +407,11 @@ export async function FieldCaptureView() {
       variant: 'primary',
       icon: Icons.check(),
       onClick: async () => {
+        if (attachedEvidence.length === 0) {
+          Toast.warning('Evidence Required: Please attach a photo of the progress before submitting.');
+          return;
+        }
+
         submitBtn.disabled = true;
         submitBtn.textContent = 'Submitting...';
 

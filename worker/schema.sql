@@ -144,6 +144,7 @@ CREATE TABLE IF NOT EXISTS reviews (
   reviewed_at         TEXT,
   rejection_reason    TEXT,
   age                 TEXT,
+  ai_verification_json TEXT,
   created_at          TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_reviews_state ON reviews(state);

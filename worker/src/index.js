@@ -67,6 +67,7 @@ export default {
       const { route, params } = found;
 
       const ctxData = {
+        ctx,
         env,
         params,
         query: Object.fromEntries(url.searchParams.entries()),

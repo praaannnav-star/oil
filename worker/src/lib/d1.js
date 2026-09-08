@@ -178,7 +178,8 @@ export function mapReview(row) {
     reviewer: row.reviewer,
     reviewedAt: row.reviewed_at,
     rejectionReason: row.rejection_reason ?? undefined,
-    age: row.age
+    age: row.age,
+    aiVerification: parseJson(row.ai_verification_json, null)
   };
 }
 

@@ -318,7 +318,7 @@ export async function ReviewQueueView() {
       drawerContent.appendChild(srvBox);
     }
 
-    // Section 3: Evidence Preview (activity-linked + report-linked, deduped)
+    // Section 3: Evidence Preview & AI Verification
     const [activityEvidence, allEvidence] = await Promise.all([
       EvidenceService.getEvidence(item.topMatch?.id),
       EvidenceService.getEvidence()
@@ -327,10 +327,53 @@ export async function ReviewQueueView() {
     [...(activityEvidence || []), ...(allEvidence || []).filter(e => e.reportId === item.reportId)]
       .forEach(e => evidenceById.set(e.id, e));
     const evidenceList = Array.from(evidenceById.values());
-    if (evidenceList && evidenceList.length > 0) {
-      const evBox = document.createElement('div');
-      evBox.className = 'card p-3 gap-2';
-      evBox.innerHTML = `<div class="text-xs font-bold text-muted">LINKED EVIDENCE PHOTOS (${evidenceList.length})</div>`;
+
+    const evBox = document.createElement('div');
+    evBox.className = 'card p-3 gap-3';
+    
+    // AI Verification Result Header
+    if (item.aiVerification) {
+      const { verified, confidence, reasoning, status } = item.aiVerification;
+      if (status === 'no_visual_evidence') {
+        evBox.innerHTML = `
+          <div class="d-flex items-center gap-2 mb-2 p-2 rounded" style="background:var(--color-surface-hover); border:1px solid var(--color-warning);">
+            <span style="font-size:1.2rem;">⚠️</span>
+            <div class="d-flex flex-col">
+              <strong class="text-xs text-warning">No Visual Evidence Attached</strong>
+              <span class="text-xs text-muted font-mono">${escapeHtml(reasoning || 'Legacy report or missing photo.')}</span>
+            </div>
+          </div>
+        `;
+      } else {
+        const badgeColor = verified ? (confidence >= 80 ? 'success' : 'warning') : 'danger';
+        const icon = verified ? '✅' : '❌';
+        evBox.innerHTML = `
+          <div class="d-flex items-center gap-2 mb-2 p-2 rounded" style="background:var(--color-surface-hover); border:1px solid var(--color-${badgeColor});">
+            <span style="font-size:1.2rem;">${icon}</span>
+            <div class="d-flex flex-col flex-1">
+              <strong class="text-xs text-${badgeColor}">AI Visual Analysis: ${verified ? 'Verified Match' : 'Mismatch detected'} (${confidence || 0}% Confidence)</strong>
+              <span class="text-xs text-muted mt-1 font-mono">${escapeHtml(reasoning || '')}</span>
+            </div>
+          </div>
+        `;
+      }
+    } else {
+      evBox.innerHTML = `
+        <div class="d-flex items-center gap-2 mb-2 p-2 rounded" style="background:var(--color-surface-hover); border:1px dashed var(--color-primary-dim);">
+          <span style="font-size:1.2rem;" class="animate-pulse">⏳</span>
+          <div class="d-flex flex-col flex-1">
+            <strong class="text-xs text-primary">Cloudflare Vision AI Analyzing...</strong>
+            <span class="text-xs text-muted font-mono">Cross-referencing photo pixels with transcript claim.</span>
+          </div>
+        </div>
+      `;
+    }
+
+    if (evidenceList.length > 0) {
+      const evHeader = document.createElement('div');
+      evHeader.className = 'text-xs font-bold text-muted mb-1';
+      evHeader.textContent = `LINKED EVIDENCE PHOTOS (${evidenceList.length})`;
+      evBox.appendChild(evHeader);
       
       const evGrid = document.createElement('div');
       evGrid.className = 'd-grid grid-3 gap-2';
@@ -340,7 +383,40 @@ export async function ReviewQueueView() {
         evGrid.appendChild(thumb);
       });
       evBox.appendChild(evGrid);
-      drawerContent.appendChild(evBox);
+    }
+    drawerContent.appendChild(evBox);
+
+    // Section 4: Verified Progress Assessor (Slider)
+    let progressVal = item.extractedEvent?.status === 'Completed' ? 100 : (item.topMatch?.progress || 0);
+    // Suggest a logical increment if not 100% and not already higher
+    if (progressVal < 100 && item.extractedEvent?.status === 'In Progress') progressVal = Math.min(100, progressVal + 10);
+    
+    if (item.state !== 'approved' && item.topMatch?.id) {
+      const progBox = document.createElement('div');
+      progBox.className = 'card p-3 gap-2 mt-3';
+      progBox.style.border = '1px solid var(--color-primary-dim)';
+      progBox.style.background = 'var(--color-surface-el)';
+      progBox.innerHTML = `
+        <div class="d-flex justify-between items-center">
+          <label class="text-xs font-bold text-primary">Verified Progress Implemented (%)</label>
+          <span class="badge badge-pending font-mono" id="slider-val-display">${progressVal}%</span>
+        </div>
+        <input type="range" id="progress-slider" min="0" max="100" step="5" value="${progressVal}" class="w-full mt-2" style="cursor:ew-resize;">
+        <div class="d-flex justify-between text-xs text-muted mt-1 font-mono">
+          <span>0%</span>
+          <span>50%</span>
+          <span>100%</span>
+        </div>
+        <p class="text-xs text-secondary mt-1">Adjust slider based on visual evidence before approving.</p>
+      `;
+      drawerContent.appendChild(progBox);
+
+      const slider = progBox.querySelector('#progress-slider');
+      const display = progBox.querySelector('#slider-val-display');
+      slider.addEventListener('input', (e) => {
+        display.textContent = e.target.value + '%';
+        progressVal = Number(e.target.value);
+      });
     }
 
     // Footer Action Buttons
@@ -353,7 +429,7 @@ export async function ReviewQueueView() {
         icon: Icons.check(),
         onClick: async () => {
           try {
-            await ReviewService.approveMatch(item.id);
+            await ReviewService.approveMatch(item.id, progressVal); // Pass progressVal here!
             Toast.success('Activity match approved! Schedule baseline actuals reconciled.');
             drawer.close();
             renderTable();

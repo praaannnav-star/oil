@@ -52,7 +52,7 @@ export default [
     method: 'POST',
     pattern: '/api/reviews/:id/approve',
     opts: { auth: true },
-    async handler({ db, params, user, audit }) {
+    async handler({ db, params, body, user, audit }) {
       if (!canReview(user)) {
         return err(403, `Role "${user.role}" is not permitted to approve matches.`);
       }
@@ -71,6 +71,17 @@ export default [
         if (!actRow) return err(404, `Matched activity ${topMatch.id} no longer exists`);
         const extracted = JSON.parse(row.extracted_json || '{}');
         const updatedAct = reconcileActivity(mapActivity(actRow), extracted);
+        
+        if (body && body.approvedProgress !== undefined) {
+          updatedAct.progress = Number(body.approvedProgress);
+          if (updatedAct.progress >= 100) {
+            updatedAct.status = 'completed';
+            if (!updatedAct.actualFinish) updatedAct.actualFinish = new Date().toISOString().split('T')[0];
+          } else if (updatedAct.progress > 0 && updatedAct.status === 'pending') {
+            updatedAct.status = 'in-progress';
+          }
+        }
+
         await db.prepare(
           `UPDATE activities SET actual_start=?, actual_finish=?, progress=?, status=?, variance=? WHERE id=?`
         ).bind(updatedAct.actualStart, updatedAct.actualFinish, updatedAct.progress, updatedAct.status,
