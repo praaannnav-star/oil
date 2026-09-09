@@ -313,6 +313,10 @@ export default [
         total: activities.length
       };
 
+      const targetProject = projectId ? projects.find(p => p.id === projectId) : null;
+      const targetActProg = targetProject ? Number(targetProject.actualProgress || 0) : (projects.length > 0 ? Number((projects.reduce((s, p) => s + (p.actualProgress || 0), 0) / projects.length).toFixed(1)) : 0);
+      const targetPlanProg = targetProject ? Number(targetProject.plannedProgress || 0) : (projects.length > 0 ? Number((projects.reduce((s, p) => s + (p.plannedProgress || 0), 0) / projects.length).toFixed(1)) : 0);
+
       return json({
         kpis: {
           portfolioSpi,
@@ -321,7 +325,13 @@ export default [
           fieldReportAdoptionPct: reportAdoptionPct,
           firstPassAccuracyPct: matchAccuracyPct,
           delayedActivitiesCount,
-          pendingReviewsCount
+          pendingReviewsCount,
+          overallProgress: targetActProg,
+          plannedProgress: targetPlanProg,
+          projectVariance: Number((targetActProg - targetPlanProg).toFixed(1)),
+          projectName: targetProject ? targetProject.name : 'All Projects Portfolio',
+          projectCode: targetProject ? targetProject.code : 'PORTFOLIO',
+          projectHealth: targetProject ? targetProject.health : (portfolioSpi >= 0.95 ? 'on-track' : (portfolioSpi >= 0.85 ? 'at-risk' : 'delayed'))
         },
         disciplineBreakdown,
         confidenceHeatmap,

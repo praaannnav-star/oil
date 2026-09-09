@@ -141,7 +141,10 @@ function setupProjectSelector() {
   const refresh = async () => {
     const projects = await ProjectsService.getProjects();
     const activeId = State.getState().currentProjectId;
-    projectSelect.innerHTML = projects.map(project => `<option value="${escapeHtml(project.id)}">${escapeHtml(project.name)} (${escapeHtml(project.budget)})</option>`).join('');
+    projectSelect.innerHTML = projects.map(project => {
+      const progLabel = project.actualProgress != null ? `${project.actualProgress}%` : (project.budget ? project.budget : '0%');
+      return `<option value="${escapeHtml(project.id)}">${escapeHtml(project.name)} (${escapeHtml(progLabel)})</option>`;
+    }).join('');
     projectSelect.value = projects.some(project => project.id === activeId) ? activeId : (projects[0]?.id || '');
   };
   window.addEventListener('projects:changed', refresh);

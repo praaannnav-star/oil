@@ -1,4 +1,4 @@
-const CACHE_NAME = 'oil-tracker-v27';
+const CACHE_NAME = 'oil-tracker-v28';
 const APP_SHELL = [
   './',
   './index.html',

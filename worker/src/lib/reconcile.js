@@ -73,7 +73,8 @@ export function rollupAll(activities, projects) {
   for (const a of activities) {
     if (a.projectId == null) continue;
     delayedByProject[a.projectId] = delayedByProject[a.projectId] || { count: 0, sum: 0, n: 0 };
-    if ((a.level === 'L5' || a.level === 'L6')) {
+    const isLeaf = childrenOf(a.id).length === 0;
+    if (isLeaf || a.level === 'L5' || a.level === 'L6') {
       delayedByProject[a.projectId].sum += Number(a.progress) || 0;
       delayedByProject[a.projectId].n += 1;
       if (a.status === 'delayed') delayedByProject[a.projectId].count += 1;

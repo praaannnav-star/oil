@@ -5,6 +5,8 @@ import { Badge } from '../components/Badge.js';
 import { Icons } from '../components/Icons.js';
 import { Toast } from '../components/Toast.js';
 import { escapeHtml } from '../utils/dom.js';
+import { State } from '../state.js';
+import { ProjectsService } from '../services/projects.js';
 
 export async function AnalyticsView() {
   const container = document.createElement('div');
@@ -25,7 +27,7 @@ export async function AnalyticsView() {
 
   const refreshBtn = Button({
     text: 'Refresh Analytics',
-    icon: Icons.sync(),
+    icon: Icons.refresh(),
     variant: 'secondary',
     size: 'sm',
     onClick: async () => {
@@ -50,13 +52,57 @@ export async function AnalyticsView() {
     }
 
     try {
-      const data = await AnalyticsService.getLiveAnalytics();
+      const activeProjectId = State.getState().currentProjectId || null;
+      const data = await AnalyticsService.getLiveAnalytics(activeProjectId);
       contentMount.innerHTML = '';
 
       const kpis = data.kpis || {};
       const breakdown = data.disciplineBreakdown || [];
       const heatmap = data.confidenceHeatmap || [];
       const scurve = data.sCurve || [];
+
+      // 0. Project Overall Progress Hero Card
+      const overallProgress = kpis.overallProgress != null ? kpis.overallProgress : 0;
+      const plannedProgress = kpis.plannedProgress != null ? kpis.plannedProgress : 0;
+      const variance = kpis.projectVariance != null ? kpis.projectVariance : 0;
+      const varColor = variance >= 0 ? 'text-success' : (variance >= -5 ? 'text-warning' : 'text-danger');
+      const varSign = variance > 0 ? '+' : '';
+      const healthStatus = kpis.projectHealth === 'completed' ? 'badge-completed' : (kpis.projectHealth === 'on-track' ? 'badge-success' : (kpis.projectHealth === 'at-risk' ? 'badge-warning' : 'badge-danger'));
+
+      const heroCard = document.createElement('div');
+      heroCard.className = 'card p-4 gap-3';
+      heroCard.style.border = '1px solid var(--color-border)';
+      heroCard.style.background = 'var(--color-surface)';
+      heroCard.innerHTML = `
+        <div class="d-flex justify-between items-start flex-wrap gap-2">
+          <div>
+            <span class="text-xs font-mono text-muted uppercase tracking-wider">${escapeHtml(kpis.projectCode || 'ACTIVE PROJECT')} • LIVE SCHEDULE TRACKING</span>
+            <h2 class="text-xl font-bold text-primary mt-1">${escapeHtml(kpis.projectName || 'Project Overview')}</h2>
+          </div>
+          <div class="d-flex items-center gap-2">
+            <span class="badge ${healthStatus} uppercase font-mono" style="padding:4px 10px; font-size:11px;">${escapeHtml(kpis.projectHealth || 'on-track')}</span>
+            <span class="text-xs text-muted font-mono">SPI: <strong class="text-primary">${kpis.portfolioSpi}</strong></span>
+          </div>
+        </div>
+
+        <div>
+          <div class="d-flex justify-between items-center text-xs mb-1 font-mono">
+            <span class="text-secondary">Overall Actual Progress: <strong class="text-primary text-sm">${overallProgress}%</strong></span>
+            <span class="text-muted">Target Baseline Plan: <strong class="text-secondary text-sm">${plannedProgress}%</strong> (<span class="${varColor} font-bold">${varSign}${variance}%</span>)</span>
+          </div>
+          <div class="confidence-bar-bg" style="height: 14px; position:relative; border-radius:6px; overflow:visible;">
+            <div class="confidence-bar-fill ${variance >= 0 ? 'confidence-high' : (variance >= -5 ? 'confidence-medium' : 'confidence-low')}" style="width: ${Math.min(100, Math.max(0, overallProgress))}%; border-radius:6px; transition: width 0.5s ease;"></div>
+            <!-- Planned Target Marker -->
+            <div style="position:absolute; top:-4px; bottom:-4px; left:${Math.min(100, Math.max(0, plannedProgress))}%; width:3px; background:var(--color-text-primary); border-radius:2px; box-shadow:0 0 6px rgba(255,255,255,0.8);" title="Scheduled Target: ${plannedProgress}%"></div>
+          </div>
+          <div class="d-flex justify-between items-center text-xs text-muted mt-1 font-mono">
+            <span>0% Kickoff</span>
+            <span>Marker shows scheduled baseline target (${plannedProgress}%)</span>
+            <span>100% Complete</span>
+          </div>
+        </div>
+      `;
+      contentMount.appendChild(heroCard);
 
       // 1. Top KPI Grid
       const kpiGrid = document.createElement('div');

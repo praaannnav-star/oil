@@ -210,16 +210,26 @@ export const AnalyticsService = {
       total: completedCount + inProgressCount + startedCount
     };
 
-    return {
-      kpis: {
-        portfolioSpi,
-        spiDrag,
-        reviewVelocityHours: reviews.length > 0 ? Number((reviews.reduce((acc, r) => acc + (r.durationHours || 3.8), 0) / reviews.length).toFixed(1)) : null,
-        fieldReportAdoptionPct: activities.length > 0 ? Math.min(100, Math.round(((API.reports || []).length / activities.length) * 100)) : 0,
-        firstPassAccuracyPct,
-        delayedActivitiesCount: activities.filter(a => a.status === 'delayed').length,
-        pendingReviewsCount: reviews.filter(r => r.state === 'needs-review').length
-      },
+      const targetProject = projectId ? projects.find(p => p.id === projectId) : null;
+      const targetActProg = targetProject ? Number(targetProject.actualProgress || 0) : (projects.length > 0 ? Number((projects.reduce((s, p) => s + (p.actualProgress || 0), 0) / projects.length).toFixed(1)) : 0);
+      const targetPlanProg = targetProject ? Number(targetProject.plannedProgress || 0) : (projects.length > 0 ? Number((projects.reduce((s, p) => s + (p.plannedProgress || 0), 0) / projects.length).toFixed(1)) : 0);
+
+      return {
+        kpis: {
+          portfolioSpi,
+          spiDrag,
+          reviewVelocityHours: reviews.length > 0 ? Number((reviews.reduce((acc, r) => acc + (r.durationHours || 3.8), 0) / reviews.length).toFixed(1)) : null,
+          fieldReportAdoptionPct: activities.length > 0 ? Math.min(100, Math.round(((API.reports || []).length / activities.length) * 100)) : 0,
+          firstPassAccuracyPct,
+          delayedActivitiesCount: activities.filter(a => a.status === 'delayed').length,
+          pendingReviewsCount: reviews.filter(r => r.state === 'needs-review').length,
+          overallProgress: targetActProg,
+          plannedProgress: targetPlanProg,
+          projectVariance: Number((targetActProg - targetPlanProg).toFixed(1)),
+          projectName: targetProject ? targetProject.name : 'All Projects Portfolio',
+          projectCode: targetProject ? targetProject.code : 'PORTFOLIO',
+          projectHealth: targetProject ? targetProject.health : (portfolioSpi >= 0.95 ? 'on-track' : (portfolioSpi >= 0.85 ? 'at-risk' : 'delayed'))
+        },
       disciplineBreakdown,
       confidenceHeatmap,
       sCurve,
