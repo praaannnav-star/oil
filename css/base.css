@@ -7,8 +7,8 @@
 html {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
-  background-color: var(--color-bg);
-  color: var(--color-text-primary);
+  background-color: var(--color-bg) !important;
+  color: var(--color-text-primary) !important;
   font-family: var(--font-sans);
   line-height: 1.5;
   height: 100%;
@@ -19,8 +19,8 @@ body {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  background-color: var(--color-bg);
-  color: var(--color-text-primary);
+  background-color: var(--color-bg) !important;
+  color: var(--color-text-primary) !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -114,7 +114,7 @@ input, textarea, select {
 }
 
 select option, optgroup {
-  background-color: var(--color-surface, #141414);
+  background-color: var(--color-surface, #000000);
   color: var(--color-text-primary, #FAFAFA);
 }
 

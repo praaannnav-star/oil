@@ -29,6 +29,7 @@ import { LandingView } from './views/Landing.js';
 import { AdminPanelView } from './views/AdminPanel.js';
 import { ProjectManagerPanelView } from './views/ProjectManagerPanel.js';
 import { ProjectFormView } from './views/ProjectForm.js';
+import { IngestHubView } from './views/IngestHub.js';
 import { ProjectsService } from './services/projects.js';
 
 // Application Bootstrap
@@ -75,6 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   AppRouter.register('/progress', FieldCaptureView);
   AppRouter.register('/progress/new', FieldCaptureView);
   AppRouter.register('/surveys', SurveyWizardView);
+  AppRouter.register('/ingest', IngestHubView);
   AppRouter.register('/review', ReviewQueueView);
   AppRouter.register('/evidence', EvidenceView);
   AppRouter.register('/analytics', AnalyticsView);

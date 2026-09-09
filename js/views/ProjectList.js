@@ -6,6 +6,7 @@ import { Button } from '../components/Button.js';
 import { escapeHtml } from '../utils/dom.js';
 
 const RING_COLORS = {
+  'completed': 'var(--color-success)',
   'on-track': 'var(--color-success)',
   'at-risk': 'var(--color-warning)',
   'delayed': 'var(--color-danger)'
@@ -81,7 +82,7 @@ export async function ProjectListView() {
             <span class="text-xs text-muted font-mono">${escapeHtml(project.code)} • ${escapeHtml(project.location)}</span>
           </div>
           <div class="health-ring" style="background: conic-gradient(${color} ${pct * 3.6}deg, rgba(255,255,255,0.08) 0deg);">
-            <span class="${project.health === 'on-track' ? 'text-success' : project.health === 'delayed' ? 'text-danger' : 'text-warning'}">${pct}%</span>
+            <span class="${project.health === 'completed' || project.health === 'on-track' ? 'text-success' : project.health === 'delayed' ? 'text-danger' : 'text-warning'}">${pct}%</span>
           </div>
         </div>
         <div class="d-flex flex-col gap-1">
@@ -90,7 +91,7 @@ export async function ProjectListView() {
             <span class="${(project.variance ?? 0) < 0 ? 'text-danger' : 'text-success'}">${(project.variance ?? 0) > 0 ? '+' : ''}${escapeHtml(String(project.variance ?? 0))}% vs plan</span>
           </div>
           <div class="confidence-bar-bg" style="height:6px;">
-            <div class="confidence-bar-fill ${project.health === 'on-track' ? 'confidence-high' : project.health === 'delayed' ? 'confidence-low' : 'confidence-medium'}" style="width:${pct}%;"></div>
+            <div class="confidence-bar-fill ${project.health === 'completed' || project.health === 'on-track' ? 'confidence-high' : project.health === 'delayed' ? 'confidence-low' : 'confidence-medium'}" style="width:${pct}%;"></div>
           </div>
         </div>
         <div class="chip-row">

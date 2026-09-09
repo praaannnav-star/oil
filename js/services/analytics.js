@@ -104,10 +104,24 @@ export const AnalyticsService = {
 
     const disciplineBreakdown = DISCIPLINES.map(d => {
       const discActs = activities.filter(a => a.discipline && a.discipline.toLowerCase().includes(d.key.toLowerCase()));
+      
       const actProg = discActs.length > 0
         ? Number((discActs.reduce((acc, a) => acc + (Number(a.progress) || 0), 0) / discActs.length).toFixed(1))
         : d.act;
-      const plannedProg = d.plan;
+        
+      const now = new Date().getTime();
+      let plannedProg = d.plan;
+      if (discActs.length > 0) {
+        const pSum = discActs.reduce((sum, a) => {
+          const start = a.plannedStart ? new Date(a.plannedStart).getTime() : now;
+          const finish = a.plannedFinish ? new Date(a.plannedFinish).getTime() : now + 86400000;
+          if (now >= finish) return sum + 100;
+          if (now <= start) return sum + 0;
+          return sum + ((now - start) / Math.max(1, finish - start)) * 100;
+        }, 0);
+        plannedProg = Number((pSum / discActs.length).toFixed(1));
+      }
+      
       const variance = Number((actProg - plannedProg).toFixed(1));
       const status = variance >= 0 ? 'on-track' : (variance >= -6 ? 'at-risk' : 'delayed');
 

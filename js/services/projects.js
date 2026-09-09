@@ -1,16 +1,99 @@
 import { API } from './api.js';
 import { AuditService } from './audit.js';
 
+export const HARDCODED_BASELINE_PROJECTS = [
+  {
+    id: 'PRJ-OIL-DUL-001',
+    name: 'Duliajan Field Headquarters Operations Hub Modernization',
+    code: 'OIL-DUL-MOD',
+    location: 'Duliajan, Dibrugarh District, Assam',
+    projectType: 'Plant',
+    category: 'Brownfield',
+    riskTier: 'B',
+    priority: 'P1',
+    region: 'Assam East',
+    plannedProgress: 100.0,
+    actualProgress: 100.0,
+    variance: 0.0,
+    spi: 1.00,
+    health: 'completed',
+    delayedActivitiesCount: 0,
+    pendingReviewCount: 0,
+    evidenceCoverage: 100
+  },
+  {
+    id: 'PRJ-OIL-2026-01',
+    name: 'Duliajan Central Gas Gathering Station (CGGS) Expansion',
+    code: 'OIL-CGGS-EXP',
+    location: 'Duliajan, Dibrugarh District, Assam',
+    projectType: 'Plant',
+    category: 'Brownfield',
+    riskTier: 'A',
+    priority: 'P1',
+    region: 'Assam East',
+    plannedProgress: 68.5,
+    actualProgress: 64.0,
+    variance: -4.5,
+    spi: 0.93,
+    health: 'at-risk',
+    delayedActivitiesCount: 2,
+    pendingReviewCount: 3,
+    evidenceCoverage: 94
+  },
+  {
+    id: 'PRJ-OIL-NUM-002',
+    name: 'Numaligarh to Siliguri Pipeline Augmentation Phase-2',
+    code: 'OIL-NSPL-AUG',
+    location: 'Numaligarh, Golaghat District, Assam',
+    projectType: 'Pipeline',
+    category: 'Linear',
+    riskTier: 'B',
+    priority: 'P2',
+    region: 'Assam Central',
+    plannedProgress: 52.0,
+    actualProgress: 54.5,
+    variance: +2.5,
+    spi: 1.05,
+    health: 'on-track',
+    delayedActivitiesCount: 0,
+    pendingReviewCount: 2,
+    evidenceCoverage: 98
+  },
+  {
+    id: 'PRJ-OIL-MOR-003',
+    name: 'Moran Field Production Infrastructure Modernization',
+    code: 'OIL-MOR-MOD',
+    location: 'Moran, Charaideo District, Assam',
+    projectType: 'Wellhead',
+    category: 'Upstream',
+    riskTier: 'B',
+    priority: 'P2',
+    region: 'Upper Assam',
+    plannedProgress: 41.0,
+    actualProgress: 39.5,
+    variance: -1.5,
+    spi: 0.96,
+    health: 'on-track',
+    delayedActivitiesCount: 1,
+    pendingReviewCount: 1,
+    evidenceCoverage: 89
+  }
+];
+
 export const ProjectsService = {
   async getProjects() {
     await API.delay();
-    return API.projects;
+    if (API.projects && API.projects.length > 0) {
+      return API.projects;
+    }
+    return HARDCODED_BASELINE_PROJECTS;
   },
 
   async getProject(id) {
     await API.delay();
-    const prj = API.projects.find(p => p.id === id);
-    if (!prj && API.projects.length > 0) return API.projects[0];
+    const list = (API.projects && API.projects.length > 0) ? API.projects : HARDCODED_BASELINE_PROJECTS;
+    const prj = list.find(p => p.id === id);
+    if (!prj && list.length > 0) return list[0];
     return prj;
   },
 

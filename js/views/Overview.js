@@ -184,7 +184,7 @@ export async function OverviewView() {
   const prjTable = Table({
     columns: prjColumns,
     data: projects,
-    onRowClick: (row) => AppRouter.navigate(\`/projects/\${row.id}\`)
+    onRowClick: (row) => AppRouter.navigate(`/projects/${row.id}`)
   });
   portfolioSection.appendChild(prjTable);
   container.appendChild(portfolioSection);

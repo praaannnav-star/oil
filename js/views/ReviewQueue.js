@@ -125,6 +125,9 @@ export async function ReviewQueueView() {
               <div class="d-flex items-center gap-2 text-xs text-muted font-mono flex-wrap">
                 <span>${escapeHtml(row.reporter)} • ${escapeHtml(row.age || 'Today')}</span>
                 <span class="badge badge-neutral" style="font-size:10px; padding:1px 6px;">👤 Reviewer: ${escapeHtml(role)}</span>
+                ${row.source && row.source.toLowerCase().includes('sheet') ? '<span class="badge badge-in-progress" style="font-size:10px; padding:1px 6px;">📊 SPREADSHEET</span>' : ''}
+                ${row.source && row.source.toLowerCase().includes('ocr') ? '<span class="badge badge-warning" style="font-size:10px; padding:1px 6px;">📄 OCR DPR</span>' : ''}
+                ${row.source && row.source.toLowerCase().includes('survey') ? '<span class="badge badge-completed" style="font-size:10px; padding:1px 6px;">📋 SURVEY</span>' : ''}
               </div>
             </div>
           `;

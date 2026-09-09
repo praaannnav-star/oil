@@ -2,6 +2,25 @@ import fs from 'fs';
 
 const BASELINE_PROJECTS = [
   {
+    id: 'PRJ-OIL-DUL-001',
+    name: 'Duliajan Field Headquarters Operations Hub Modernization',
+    code: 'OIL-DUL-MOD',
+    location: 'Duliajan, Dibrugarh District, Assam',
+    projectType: 'Plant',
+    category: 'Brownfield',
+    riskTier: 'B',
+    priority: 'P1',
+    region: 'Assam East',
+    plannedProgress: 100.0,
+    actualProgress: 100.0,
+    variance: 0.0,
+    spi: 1.00,
+    health: 'completed',
+    delayedActivitiesCount: 0,
+    pendingReviewCount: 0,
+    evidenceCoverage: 100
+  },
+  {
     id: 'PRJ-OIL-2026-01',
     name: 'Duliajan Central Gas Gathering Station (CGGS) Expansion',
     code: 'OIL-CGGS-EXP',
@@ -191,6 +210,63 @@ const BASELINE_ACTIVITIES = [
     id: 'ACT-2026-024', projectId: 'PRJ-OIL-2026-01', parentId: 'ACT-2026-021',
     level: 'L5', code: 'HSE-AUD-Q3', name: 'Quarterly OISD-179 Statutory Safety Audit', discipline: 'HSE',
     plannedStart: '2026-10-10', plannedFinish: '2026-10-20', progress: 0, status: 'not-started', variance: 0
+  },
+
+  // Completed Project PRJ-OIL-DUL-001 Activities (100% Completed)
+  {
+    id: 'ACT-DUL-001', projectId: 'PRJ-OIL-DUL-001', parentId: null,
+    level: 'L3', code: 'DUL-CIV-01', name: 'Control Building Structural Retrofitting', discipline: 'Civil',
+    plannedStart: '2025-10-01', plannedFinish: '2026-02-15', actualStart: '2025-10-01', actualFinish: '2026-02-10', progress: 100, status: 'completed', variance: 0
+  },
+  {
+    id: 'ACT-DUL-002', projectId: 'PRJ-OIL-DUL-001', parentId: 'ACT-DUL-001',
+    level: 'L5', code: 'DUL-CIV-FND', name: 'Reinforced Column Footing & Slab Strengthening', discipline: 'Civil',
+    plannedStart: '2025-10-05', plannedFinish: '2025-11-20', actualStart: '2025-10-05', actualFinish: '2025-11-18', progress: 100, status: 'completed', variance: 0
+  },
+  {
+    id: 'ACT-DUL-003', projectId: 'PRJ-OIL-DUL-001', parentId: 'ACT-DUL-001',
+    level: 'L5', code: 'DUL-CIV-ROOF', name: 'Blast-Resistant Control Room Roof Installation', discipline: 'Civil',
+    plannedStart: '2025-11-25', plannedFinish: '2026-01-15', actualStart: '2025-11-25', actualFinish: '2026-01-12', progress: 100, status: 'completed', variance: 0
+  },
+  {
+    id: 'ACT-DUL-004', projectId: 'PRJ-OIL-DUL-001', parentId: null,
+    level: 'L3', code: 'DUL-PIP-01', name: 'Fuel Gas Conditioning & Metering Skid', discipline: 'Piping',
+    plannedStart: '2025-11-01', plannedFinish: '2026-03-30', actualStart: '2025-11-01', actualFinish: '2026-03-25', progress: 100, status: 'completed', variance: 0
+  },
+  {
+    id: 'ACT-DUL-005', projectId: 'PRJ-OIL-DUL-001', parentId: 'ACT-DUL-004',
+    level: 'L5', code: 'DUL-PIP-SKD', name: 'Dual-Filter Coalescer Skid Erection & Alignment', discipline: 'Piping',
+    plannedStart: '2025-11-10', plannedFinish: '2025-12-28', actualStart: '2025-11-10', actualFinish: '2025-12-20', progress: 100, status: 'completed', variance: 0
+  },
+  {
+    id: 'ACT-DUL-006', projectId: 'PRJ-OIL-DUL-001', parentId: 'ACT-DUL-004',
+    level: 'L6', code: 'DUL-PIP-HYD', name: 'Skid High-Pressure Hydrotest & Nitrogen Purging', discipline: 'Piping',
+    plannedStart: '2026-01-05', plannedFinish: '2026-02-10', actualStart: '2026-01-05', actualFinish: '2026-02-05', progress: 100, status: 'completed', variance: 0
+  },
+  {
+    id: 'ACT-DUL-007', projectId: 'PRJ-OIL-DUL-001', parentId: null,
+    level: 'L3', code: 'DUL-ELE-01', name: 'Dual UPS & Redundant Power Distribution System', discipline: 'Electrical',
+    plannedStart: '2025-12-01', plannedFinish: '2026-04-15', actualStart: '2025-12-01', actualFinish: '2026-04-10', progress: 100, status: 'completed', variance: 0
+  },
+  {
+    id: 'ACT-DUL-008', projectId: 'PRJ-OIL-DUL-001', parentId: 'ACT-DUL-007',
+    level: 'L5', code: 'DUL-ELE-UPS', name: '120kVA Industrial UPS Bank & Battery Rack Commissioning', discipline: 'Electrical',
+    plannedStart: '2026-01-10', plannedFinish: '2026-02-28', actualStart: '2026-01-10', actualFinish: '2026-02-25', progress: 100, status: 'completed', variance: 0
+  },
+  {
+    id: 'ACT-DUL-009', projectId: 'PRJ-OIL-DUL-001', parentId: null,
+    level: 'L3', code: 'DUL-INS-01', name: 'SCADA Telemetry & Emergency Shutdown (ESD) System', discipline: 'Instrumentation',
+    plannedStart: '2026-01-15', plannedFinish: '2026-05-10', actualStart: '2026-01-15', actualFinish: '2026-05-02', progress: 100, status: 'completed', variance: 0
+  },
+  {
+    id: 'ACT-DUL-010', projectId: 'PRJ-OIL-DUL-001', parentId: 'ACT-DUL-009',
+    level: 'L6', code: 'DUL-INS-SAT', name: 'Site Acceptance Testing & Integrated SCADA Handover', discipline: 'Instrumentation',
+    plannedStart: '2026-03-20', plannedFinish: '2026-04-30', actualStart: '2026-03-20', actualFinish: '2026-04-28', progress: 100, status: 'completed', variance: 0
+  },
+  {
+    id: 'ACT-DUL-011', projectId: 'PRJ-OIL-DUL-001', parentId: null,
+    level: 'L3', code: 'DUL-HSE-01', name: 'Final Statutory Approvals & Safety Case Handover', discipline: 'HSE',
+    plannedStart: '2026-04-01', plannedFinish: '2026-05-20', actualStart: '2026-04-01', actualFinish: '2026-05-15', progress: 100, status: 'completed', variance: 0
   }
 ];
 
@@ -344,6 +420,36 @@ const BASELINE_REVIEWS = [
     created_at: '2026-09-02 09:30:00',
     top_match_json: JSON.stringify({ id: 'ACT-2026-014', name: 'Junction Box JB-102 Installation', code: 'ELE-JB-102', confidence: 61, discipline: 'Instrumentation' }),
     extracted_json: JSON.stringify({ activity: 'Received partial shipment of non-certified glands. Returned to vendor.', progress: 0, status: 'Delayed', discipline: 'Instrumentation' })
+  },
+  {
+    id: 'REV-2026-DUL-01',
+    report_id: 'REP-2026-DUL-01',
+    type: 'report',
+    source: 'Commissioning Sign-off Log',
+    reporter: 'Pranjal Gogoi (Lead Commissioning Eng)',
+    discipline: 'Instrumentation',
+    state: 'approved',
+    tab_category: 'high-confidence',
+    reviewer: 'Devraj Borah — Lead Planner',
+    reviewed_at: '2026-05-02 15:00:00',
+    created_at: '2026-05-02 11:00:00',
+    top_match_json: JSON.stringify({ id: 'ACT-DUL-010', name: 'Site Acceptance Testing & Integrated SCADA Handover', code: 'DUL-INS-SAT', confidence: 98, discipline: 'Instrumentation' }),
+    extracted_json: JSON.stringify({ activity: 'Successfully completed final SAT and live telemetry cutover to central control room. 100% operational.', progress: 100, status: 'Completed', discipline: 'Instrumentation' })
+  },
+  {
+    id: 'REV-2026-DUL-02',
+    report_id: 'REP-2026-DUL-02',
+    type: 'report',
+    source: 'OISD Compliance Verification Record',
+    reporter: 'Rituraj Sharma (HSE Lead)',
+    discipline: 'HSE',
+    state: 'approved',
+    tab_category: 'high-confidence',
+    reviewer: 'Manoj Baruah — QAQC Reviewer',
+    reviewed_at: '2026-05-16 10:30:00',
+    created_at: '2026-05-15 16:20:00',
+    top_match_json: JSON.stringify({ id: 'ACT-DUL-011', name: 'Final Statutory Approvals & Safety Case Handover', code: 'DUL-HSE-01', confidence: 99, discipline: 'HSE' }),
+    extracted_json: JSON.stringify({ activity: 'Obtained OISD final operational clearance certificate. Project fully completed and handed over to Asset Management.', progress: 100, status: 'Completed', discipline: 'HSE' })
   }
 ];
 

@@ -1,16 +1,16 @@
 :root {
   color-scheme: dark;
-  /* Surface & Background (Dark Theme) */
-  --color-bg: #0A0A0A;
-  --color-surface: #141414;
-  --color-surface-el: #1F1F1F;
-  --color-surface-hover: #292929;
-  --color-surface-active: #333333;
+  /* Surface & Background (Pure Black Theme) */
+  --color-bg: #000000;
+  --color-surface: #000000;
+  --color-surface-el: #0A0A0A;
+  --color-surface-hover: #141414;
+  --color-surface-active: #1F1F1F;
 
   /* Borders & Dividers */
-  --color-border: #292929;
-  --color-border-light: #1F1F1F;
-  --color-border-subtle: rgba(255, 255, 255, 0.05);
+  --color-border: #222222;
+  --color-border-light: #181818;
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
 
   /* Typography */
   --color-text-primary: #FAFAFA;
@@ -91,7 +91,7 @@
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.35);
   --shadow-md: 0 4px 12px -1px rgba(0, 0, 0, 0.45);
   --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.6);
-  --shadow-glow: 0 0 15px rgba(37, 99, 235, 0.3);
+  --shadow-glow: 0 0 15px rgba(224, 41, 29, 0.3);
 
   /* Layout Dimensions */
   --header-height: 56px;

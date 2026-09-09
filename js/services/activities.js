@@ -1,9 +1,67 @@
 import { API } from './api.js';
 
+export const HARDCODED_BASELINE_ACTIVITIES = [
+  {
+    id: 'ACT-DUL-001', projectId: 'PRJ-OIL-DUL-001', parentId: null,
+    level: 'L3', code: 'DUL-CIV-01', name: 'Control Building Structural Retrofitting', discipline: 'Civil',
+    plannedStart: '2025-10-01', plannedFinish: '2026-02-15', actualStart: '2025-10-01', actualFinish: '2026-02-10', progress: 100, status: 'completed', variance: 0
+  },
+  {
+    id: 'ACT-DUL-002', projectId: 'PRJ-OIL-DUL-001', parentId: 'ACT-DUL-001',
+    level: 'L5', code: 'DUL-CIV-FND', name: 'Reinforced Column Footing & Slab Strengthening', discipline: 'Civil',
+    plannedStart: '2025-10-05', plannedFinish: '2025-11-20', actualStart: '2025-10-05', actualFinish: '2025-11-18', progress: 100, status: 'completed', variance: 0
+  },
+  {
+    id: 'ACT-DUL-003', projectId: 'PRJ-OIL-DUL-001', parentId: 'ACT-DUL-001',
+    level: 'L5', code: 'DUL-CIV-ROOF', name: 'Blast-Resistant Control Room Roof Installation', discipline: 'Civil',
+    plannedStart: '2025-11-25', plannedFinish: '2026-01-15', actualStart: '2025-11-25', actualFinish: '2026-01-12', progress: 100, status: 'completed', variance: 0
+  },
+  {
+    id: 'ACT-DUL-004', projectId: 'PRJ-OIL-DUL-001', parentId: null,
+    level: 'L3', code: 'DUL-PIP-01', name: 'Fuel Gas Conditioning & Metering Skid', discipline: 'Piping',
+    plannedStart: '2025-11-01', plannedFinish: '2026-03-30', actualStart: '2025-11-01', actualFinish: '2026-03-25', progress: 100, status: 'completed', variance: 0
+  },
+  {
+    id: 'ACT-DUL-005', projectId: 'PRJ-OIL-DUL-001', parentId: 'ACT-DUL-004',
+    level: 'L5', code: 'DUL-PIP-SKD', name: 'Dual-Filter Coalescer Skid Erection & Alignment', discipline: 'Piping',
+    plannedStart: '2025-11-10', plannedFinish: '2025-12-28', actualStart: '2025-11-10', actualFinish: '2025-12-20', progress: 100, status: 'completed', variance: 0
+  },
+  {
+    id: 'ACT-DUL-006', projectId: 'PRJ-OIL-DUL-001', parentId: 'ACT-DUL-004',
+    level: 'L6', code: 'DUL-PIP-HYD', name: 'Skid High-Pressure Hydrotest & Nitrogen Purging', discipline: 'Piping',
+    plannedStart: '2026-01-05', plannedFinish: '2026-02-10', actualStart: '2026-01-05', actualFinish: '2026-02-05', progress: 100, status: 'completed', variance: 0
+  },
+  {
+    id: 'ACT-DUL-007', projectId: 'PRJ-OIL-DUL-001', parentId: null,
+    level: 'L3', code: 'DUL-ELE-01', name: 'Dual UPS & Redundant Power Distribution System', discipline: 'Electrical',
+    plannedStart: '2025-12-01', plannedFinish: '2026-04-15', actualStart: '2025-12-01', actualFinish: '2026-04-10', progress: 100, status: 'completed', variance: 0
+  },
+  {
+    id: 'ACT-DUL-008', projectId: 'PRJ-OIL-DUL-001', parentId: 'ACT-DUL-007',
+    level: 'L5', code: 'DUL-ELE-UPS', name: '120kVA Industrial UPS Bank & Battery Rack Commissioning', discipline: 'Electrical',
+    plannedStart: '2026-01-10', plannedFinish: '2026-02-28', actualStart: '2026-01-10', actualFinish: '2026-02-25', progress: 100, status: 'completed', variance: 0
+  },
+  {
+    id: 'ACT-DUL-009', projectId: 'PRJ-OIL-DUL-001', parentId: null,
+    level: 'L3', code: 'DUL-INS-01', name: 'SCADA Telemetry & Emergency Shutdown (ESD) System', discipline: 'Instrumentation',
+    plannedStart: '2026-01-15', plannedFinish: '2026-05-10', actualStart: '2026-01-15', actualFinish: '2026-05-02', progress: 100, status: 'completed', variance: 0
+  },
+  {
+    id: 'ACT-DUL-010', projectId: 'PRJ-OIL-DUL-001', parentId: 'ACT-DUL-009',
+    level: 'L6', code: 'DUL-INS-SAT', name: 'Site Acceptance Testing & Integrated SCADA Handover', discipline: 'Instrumentation',
+    plannedStart: '2026-03-20', plannedFinish: '2026-04-30', actualStart: '2026-03-20', actualFinish: '2026-04-28', progress: 100, status: 'completed', variance: 0
+  },
+  {
+    id: 'ACT-DUL-011', projectId: 'PRJ-OIL-DUL-001', parentId: null,
+    level: 'L3', code: 'DUL-HSE-01', name: 'Final Statutory Approvals & Safety Case Handover', discipline: 'HSE',
+    plannedStart: '2026-04-01', plannedFinish: '2026-05-20', actualStart: '2026-04-01', actualFinish: '2026-05-15', progress: 100, status: 'completed', variance: 0
+  }
+];
+
 export const ActivitiesService = {
   async getActivities(projectId = null, filters = {}) {
     await API.delay();
-    let list = API.activities;
+    let list = (API.activities && API.activities.length > 0) ? API.activities : HARDCODED_BASELINE_ACTIVITIES;
     if (projectId) {
       list = list.filter(a => a.projectId === projectId);
     }
@@ -29,7 +87,8 @@ export const ActivitiesService = {
 
   async getActivity(id) {
     await API.delay();
-    return API.activities.find(a => a.id === id || a.code === id) || null;
+    const list = (API.activities && API.activities.length > 0) ? API.activities : HARDCODED_BASELINE_ACTIVITIES;
+    return list.find(a => a.id === id || a.code === id) || null;
   },
 
   async updateActivity(id, patch) {

@@ -62,7 +62,7 @@ for (const item of itemsToCopy) {
 
 // 5. Deploy Frontend to Cloudflare Pages
 console.log('\n🌐 Step 5: Deploying PWA to Cloudflare Pages...');
-runQuiet('npx wrangler pages deploy dist --project-name oil-bridge-pwa --commit-dirty=true', rootDir);
+runQuiet('npx wrangler pages deploy dist --project-name oil-bridge-pwa --branch=master --commit-dirty=true', rootDir);
 
 // 6. Run Smoke Test against live URL
 console.log('\n🧪 Step 6: Verifying live Cloudflare Pages deployment...');
