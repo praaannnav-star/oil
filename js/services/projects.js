@@ -82,19 +82,33 @@ export const HARDCODED_BASELINE_PROJECTS = [
 
 export const ProjectsService = {
   async getProjects() {
-    await API.delay();
+    if (navigator.onLine) {
+      try {
+        const { ApiHttp } = await import('./http.js');
+        const remoteProjects = await ApiHttp.request('/projects');
+        if (Array.isArray(remoteProjects) && remoteProjects.length > 0) {
+          API.projects = remoteProjects;
+          API.persist('projects');
+          return remoteProjects;
+        }
+      } catch (err) {
+        console.warn('Live projects fetch failed, falling back to local cache:', err.message);
+      }
+    }
     if (API.projects && API.projects.length > 0) {
       return API.projects;
     }
-    return HARDCODED_BASELINE_PROJECTS;
+    return [];
   },
 
   async getProject(id) {
-    await API.delay();
-    const list = (API.projects && API.projects.length > 0) ? API.projects : HARDCODED_BASELINE_PROJECTS;
+    if (navigator.onLine && (!API.projects || API.projects.length === 0)) {
+      await this.getProjects();
+    }
+    const list = (API.projects && API.projects.length > 0) ? API.projects : [];
     const prj = list.find(p => p.id === id);
     if (!prj && list.length > 0) return list[0];
-    return prj;
+    return prj || null;
   },
 
   async createProject(data, actor) {

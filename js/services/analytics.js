@@ -64,7 +64,7 @@ function buildSCurve(activities, projects) {
 
 export const AnalyticsService = {
   async getLiveAnalytics(projectId = null) {
-    if (!API.useMock && navigator.onLine) {
+    if (navigator.onLine) {
       try {
         const { ApiHttp } = await import('./http.js');
         const url = projectId ? `/analytics?projectId=${encodeURIComponent(projectId)}` : '/analytics';
@@ -87,31 +87,30 @@ export const AnalyticsService = {
     projects.forEach(p => {
       if (p.spi) { totalSpi += Number(p.spi); spiCount++; }
     });
-    const portfolioSpi = spiCount > 0 ? Number((totalSpi / spiCount).toFixed(2)) : 0.94;
+    const portfolioSpi = spiCount > 0 ? Number((totalSpi / spiCount).toFixed(2)) : 1.0;
     const spiDrag = Number(((1.0 - portfolioSpi) * 100).toFixed(1));
 
     const highConfidenceCount = reviews.filter(r => (r.topMatch?.confidence || 0) >= 80).length;
-    const firstPassAccuracyPct = reviews.length > 0 ? Number(((highConfidenceCount / reviews.length) * 100).toFixed(1)) : 89.4;
+    const firstPassAccuracyPct = reviews.length > 0 ? Number(((highConfidenceCount / reviews.length) * 100).toFixed(1)) : 0;
 
     const DISCIPLINES = [
-      { key: 'Civil', label: 'Civil & Structural (WBS-100)', plan: 81, act: 78 },
-      { key: 'Piping', label: 'Process Piping & Manifolds (WBS-200)', plan: 58, act: 54 },
-      { key: 'Electrical', label: 'Electrical Substation & Cabling (WBS-300)', plan: 47, act: 48 },
-      { key: 'Instrumentation', label: 'Instrumentation & Control (WBS-400)', plan: 46, act: 35 },
-      { key: 'Pipeline', label: 'Pipeline & RoW Construction (WBS-500)', plan: 65, act: 62 },
-      { key: 'HSE', label: 'HSE & Compliance Assurance', plan: 95, act: 93 }
+      { key: 'Civil', label: 'Civil & Structural (WBS-100)' },
+      { key: 'Piping', label: 'Process Piping & Manifolds (WBS-200)' },
+      { key: 'Electrical', label: 'Electrical Substation & Cabling (WBS-300)' },
+      { key: 'Instrumentation', label: 'Instrumentation & Control (WBS-400)' },
+      { key: 'Pipeline', label: 'Pipeline & RoW Construction (WBS-500)' },
+      { key: 'HSE', label: 'HSE & Compliance Assurance' }
     ];
 
     const disciplineBreakdown = DISCIPLINES.map(d => {
       const discActs = activities.filter(a => a.discipline && a.discipline.toLowerCase().includes(d.key.toLowerCase()));
-      
-      const actProg = discActs.length > 0
-        ? Number((discActs.reduce((acc, a) => acc + (Number(a.progress) || 0), 0) / discActs.length).toFixed(1))
-        : d.act;
-        
+      const hasData = discActs.length > 0;
+      let actProg = 0;
+      let plannedProg = 0;
       const now = new Date().getTime();
-      let plannedProg = d.plan;
-      if (discActs.length > 0) {
+
+      if (hasData) {
+        actProg = Number((discActs.reduce((acc, a) => acc + (Number(a.progress) || 0), 0) / discActs.length).toFixed(1));
         const pSum = discActs.reduce((sum, a) => {
           const start = a.plannedStart ? new Date(a.plannedStart).getTime() : now;
           const finish = a.plannedFinish ? new Date(a.plannedFinish).getTime() : now + 86400000;
@@ -123,7 +122,7 @@ export const AnalyticsService = {
       }
       
       const variance = Number((actProg - plannedProg).toFixed(1));
-      const status = variance >= 0 ? 'on-track' : (variance >= -6 ? 'at-risk' : 'delayed');
+      const status = !hasData ? 'pending' : (variance >= 0 ? 'on-track' : (variance >= -6 ? 'at-risk' : 'delayed'));
 
       const discRevs = reviews.filter(r =>
         (r.discipline && r.discipline.toLowerCase().includes(d.key.toLowerCase())) ||
@@ -131,7 +130,7 @@ export const AnalyticsService = {
       );
       const avgConf = discRevs.length > 0
         ? Math.round(discRevs.reduce((acc, r) => acc + (r.topMatch?.confidence || 85), 0) / discRevs.length)
-        : 88;
+        : 0;
 
       return {
         key: d.key,
@@ -139,8 +138,9 @@ export const AnalyticsService = {
         activityCount: discActs.length,
         actualProgress: actProg,
         plannedProgress: plannedProg,
-        variance,
+        variance: hasData ? variance : 0,
         status,
+        hasData,
         avgConfidence: avgConf,
         reviewCount: discRevs.length
       };
@@ -155,10 +155,10 @@ export const AnalyticsService = {
       const approved = discRevs.filter(r => r.state === 'approved').length;
       const rejected = discRevs.filter(r => r.state === 'rejected').length;
       const pending = discRevs.filter(r => r.state === 'needs-review').length;
-      const rate = (approved + rejected) > 0 ? Math.round((approved / (approved + rejected)) * 100) : (total > 0 ? 100 : 0);
+      const rate = (approved + rejected) > 0 ? Math.round((approved / (approved + rejected)) * 100) : 0;
       const avgConf = total > 0
         ? Math.round(discRevs.reduce((acc, r) => acc + (r.topMatch?.confidence || 85), 0) / total)
-        : 88;
+        : 0;
 
       return {
         discipline: d.key,
@@ -168,6 +168,7 @@ export const AnalyticsService = {
         rejectedCount: rejected,
         pendingCount: pending,
         acceptanceRate: rate,
+        hasData: total > 0,
         avgConfidence: avgConf
       };
     });
@@ -234,7 +235,16 @@ export const AnalyticsService = {
 
   async getExecutiveMetrics() {
     const data = await this.getLiveAnalytics();
-    return data.kpis;
+    const kpis = data.kpis || {};
+    const meta = data.meta || {};
+    return {
+      totalProjects: meta.totalProjects ?? (API.projects?.length || 0),
+      totalDelayedActs: kpis.delayedActivitiesCount ?? 0,
+      pendingReviews: kpis.pendingReviewsCount ?? 0,
+      avgCoverage: kpis.fieldReportAdoptionPct ?? 92,
+      portfolioSpi: kpis.portfolioSpi ?? 1.0,
+      ...kpis
+    };
   },
 
   async getExecutionMemoryData() {

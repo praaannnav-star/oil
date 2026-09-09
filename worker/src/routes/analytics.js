@@ -5,12 +5,12 @@ import { json } from '../lib/http.js';
 import { mapActivity, mapProject, mapReview } from '../lib/d1.js';
 
 const DISCIPLINES = [
-  { key: 'Civil', label: 'Civil & Structural (WBS-100)', defaultPlan: 81, defaultActual: 78 },
-  { key: 'Piping', label: 'Process Piping & Manifolds (WBS-200)', defaultPlan: 58, defaultActual: 54 },
-  { key: 'Electrical', label: 'Electrical Substation & Cabling (WBS-300)', defaultPlan: 47, defaultActual: 48 },
-  { key: 'Instrumentation', label: 'Instrumentation & Control (WBS-400)', defaultPlan: 46, defaultActual: 35 },
-  { key: 'Pipeline', label: 'Pipeline & RoW Construction (WBS-500)', defaultPlan: 65, defaultActual: 62 },
-  { key: 'HSE', label: 'HSE & Compliance Assurance', defaultPlan: 95, defaultActual: 93 }
+  { key: 'Civil', label: 'Civil & Structural (WBS-100)' },
+  { key: 'Piping', label: 'Process Piping & Manifolds (WBS-200)' },
+  { key: 'Electrical', label: 'Electrical Substation & Cabling (WBS-300)' },
+  { key: 'Instrumentation', label: 'Instrumentation & Control (WBS-400)' },
+  { key: 'Pipeline', label: 'Pipeline & RoW Construction (WBS-500)' },
+  { key: 'HSE', label: 'HSE & Compliance Assurance' }
 ];
 
 function buildSCurve(activities, projects) {
@@ -183,10 +183,11 @@ export default [
           a.discipline && a.discipline.toLowerCase().includes(d.key.toLowerCase())
         );
 
-        let actualProgress = d.defaultActual;
-        let plannedProgress = d.defaultPlan;
+        const hasData = discActs.length > 0;
+        let actualProgress = 0;
+        let plannedProgress = 0;
 
-        if (discActs.length > 0) {
+        if (hasData) {
           // Compute real actual progress
           const sumProg = discActs.reduce((acc, a) => acc + (Number(a.progress) || 0), 0);
           actualProgress = Number((sumProg / discActs.length).toFixed(1));
@@ -212,7 +213,7 @@ export default [
         }
 
         const variance = Number((actualProgress - plannedProgress).toFixed(1));
-        const status = variance >= 0 ? 'on-track' : (variance >= -6 ? 'at-risk' : 'delayed');
+        const status = !hasData ? 'pending' : (variance >= 0 ? 'on-track' : (variance >= -6 ? 'at-risk' : 'delayed'));
 
         // Relevant reviews for this discipline
         const discRevs = reviews.filter(r =>
@@ -220,7 +221,7 @@ export default [
           (r.topMatch?.discipline && r.topMatch.discipline.toLowerCase().includes(d.key.toLowerCase()))
         );
 
-        let avgConf = 90;
+        let avgConf = 0;
         if (discRevs.length > 0) {
           const sumConf = discRevs.reduce((acc, r) => acc + (r.topMatch?.confidence || 85), 0);
           avgConf = Math.round(sumConf / discRevs.length);
@@ -232,8 +233,9 @@ export default [
           activityCount: discActs.length,
           actualProgress,
           plannedProgress,
-          variance,
+          variance: hasData ? variance : 0,
           status,
+          hasData,
           avgConfidence: avgConf,
           reviewCount: discRevs.length
         };
@@ -254,7 +256,7 @@ export default [
           ? Math.round((approved / (approved + rejected)) * 100)
           : (total > 0 ? 100 : 0);
 
-        let avgConfidence = 88;
+        let avgConfidence = 0;
         if (total > 0) {
           const sumConf = discRevs.reduce((acc, r) => acc + (r.topMatch?.confidence || 85), 0);
           avgConfidence = Math.round(sumConf / total);
@@ -268,6 +270,7 @@ export default [
           rejectedCount: rejected,
           pendingCount: pending,
           acceptanceRate: rate,
+          hasData: total > 0,
           avgConfidence
         };
       });

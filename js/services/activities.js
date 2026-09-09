@@ -60,8 +60,27 @@ export const HARDCODED_BASELINE_ACTIVITIES = [
 
 export const ActivitiesService = {
   async getActivities(projectId = null, filters = {}) {
-    await API.delay();
-    let list = (API.activities && API.activities.length > 0) ? API.activities : HARDCODED_BASELINE_ACTIVITIES;
+    if (navigator.onLine) {
+      try {
+        const { ApiHttp } = await import('./http.js');
+        const url = projectId ? `/activities?projectId=${encodeURIComponent(projectId)}` : '/activities';
+        const remoteActs = await ApiHttp.request(url);
+        if (Array.isArray(remoteActs) && remoteActs.length > 0) {
+          if (projectId) {
+            // Merge or replace activities for this project
+            const others = API.activities.filter(a => a.projectId !== projectId);
+            API.activities = [...others, ...remoteActs];
+          } else {
+            API.activities = remoteActs;
+          }
+          API.persist('activities');
+        }
+      } catch (err) {
+        console.warn('Live activities fetch failed, falling back to local cache:', err.message);
+      }
+    }
+
+    let list = Array.isArray(API.activities) ? API.activities : [];
     if (projectId) {
       list = list.filter(a => a.projectId === projectId);
     }
@@ -77,8 +96,8 @@ export const ActivitiesService = {
     if (filters.search) {
       const q = filters.search.toLowerCase();
       list = list.filter(a => 
-        a.name.toLowerCase().includes(q) || 
-        a.code.toLowerCase().includes(q) ||
+        (a.name && a.name.toLowerCase().includes(q)) || 
+        (a.code && a.code.toLowerCase().includes(q)) ||
         (a.id && a.id.toLowerCase().includes(q))
       );
     }
@@ -86,8 +105,10 @@ export const ActivitiesService = {
   },
 
   async getActivity(id) {
-    await API.delay();
-    const list = (API.activities && API.activities.length > 0) ? API.activities : HARDCODED_BASELINE_ACTIVITIES;
+    if (navigator.onLine && (!API.activities || API.activities.length === 0)) {
+      await this.getActivities();
+    }
+    const list = Array.isArray(API.activities) ? API.activities : [];
     return list.find(a => a.id === id || a.code === id) || null;
   },
 

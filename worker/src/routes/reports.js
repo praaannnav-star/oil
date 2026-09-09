@@ -43,9 +43,75 @@ export default [
       // client-generated id it queued originally).
       const existing = await db.prepare('SELECT id FROM field_reports WHERE id = ?').bind(id).first();
       if (existing) return json({ id, status: 'pending-review', duplicate: true });
-      const extracted = body.extractedEvent || {};
-      const matched = body.matchedActivity || null;
-      const confidence = Number(body.confidence || (matched ? matched.confidence : 90));
+      let extracted = { ...(body.extractedEvent || {}) };
+      let matched = body.matchedActivity || null;
+
+      // Server-side LLM extraction if transcript is provided and fields are missing or non-LLM
+      if (body.rawTranscript && env?.AI && (!extracted.discipline || !extracted.activity || extracted.progress == null)) {
+        try {
+          const { runLlmJson } = await import('./llm.js');
+          const { EXTRACT_SYSTEM } = await import('../prompts.js');
+          const llmRes = await runLlmJson(env, EXTRACT_SYSTEM, body.rawTranscript);
+          if (llmRes && (llmRes.discipline || llmRes.activity)) {
+            extracted.discipline = extracted.discipline || llmRes.discipline || 'Civil';
+            extracted.activity = extracted.activity || llmRes.activity || 'Field Activity';
+            extracted.assetTag = extracted.assetTag || llmRes.assetTag || 'General Area';
+            extracted.status = extracted.status || llmRes.status || 'In Progress';
+            extracted.blocker = extracted.blocker || llmRes.blocker || 'None';
+            if (extracted.progress == null && llmRes.progress != null && !isNaN(llmRes.progress)) {
+              extracted.progress = Number(llmRes.progress);
+            }
+            extracted.source = 'llm';
+          }
+        } catch (llmErr) {
+          console.warn('Server-side LLM extraction fallback:', llmErr);
+        }
+      }
+
+      // Auto-match to live D1 activities if no matchedActivity was supplied by client
+      if (!matched) {
+        try {
+          const actsStmt = body.projectId
+            ? db.prepare('SELECT * FROM activities WHERE project_id = ?').bind(body.projectId)
+            : db.prepare('SELECT * FROM activities');
+          const { results: actRows } = await actsStmt.all();
+          if (actRows && actRows.length > 0) {
+            const disc = (extracted.discipline || '').toLowerCase();
+            const actText = `${extracted.activity || ''} ${extracted.assetTag || ''}`.toLowerCase();
+            let bestAct = null;
+            let bestScore = 0;
+            for (const a of actRows) {
+              let score = 0;
+              const aDisc = (a.discipline || '').toLowerCase();
+              const aName = (a.name || '').toLowerCase();
+              const aCode = (a.code || '').toLowerCase();
+              if (disc && aDisc && aDisc.includes(disc)) score += 35;
+              if (actText.includes(aCode) || aCode.includes(actText)) score += 40;
+              const tokens = actText.split(/\s+/).filter(t => t.length > 3);
+              for (const t of tokens) {
+                if (aName.includes(t)) score += 15;
+              }
+              if (score > bestScore) {
+                bestScore = score;
+                bestAct = a;
+              }
+            }
+            if (bestAct && bestScore >= 30) {
+              matched = {
+                id: bestAct.id,
+                name: bestAct.name,
+                code: bestAct.code,
+                discipline: bestAct.discipline,
+                confidence: Math.min(96, bestScore + 20)
+              };
+            }
+          }
+        } catch (matchErr) {
+          console.warn('Live activity auto-matcher failed:', matchErr);
+        }
+      }
+
+      const confidence = Number(body.confidence || (matched ? matched.confidence : 88));
       const status = 'pending-review';
 
       // Evidence items arrive as metadata (photos already uploaded via

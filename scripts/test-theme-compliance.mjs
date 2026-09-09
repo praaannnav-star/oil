@@ -39,8 +39,8 @@ console.log('\n--- 2. Testing HTML, Body & Shell (css/base.css & index.html) ---
 const baseCss = readFileSync(join(repoRoot, 'css', 'base.css'), 'utf8');
 const indexHtml = readFileSync(join(repoRoot, 'index.html'), 'utf8');
 
-assert(/html\s*\{[^}]*background-color:\s*var\(--color-bg\);/.test(baseCss), 'html background-color uses var(--color-bg)');
-assert(/body\s*\{[^}]*background-color:\s*var\(--color-bg\);/.test(baseCss), 'body background-color uses var(--color-bg)');
+assert(/html\s*\{[^}]*background-color:\s*var\(--color-bg\)(?:\s*!important)?;/.test(baseCss), 'html background-color uses var(--color-bg)');
+assert(/body\s*\{[^}]*background-color:\s*var\(--color-bg\)(?:\s*!important)?;/.test(baseCss), 'body background-color uses var(--color-bg)');
 assert(/<meta name="theme-color" content="#000000">/.test(indexHtml), 'index.html meta theme-color is #000000');
 assert(!/select option[^}]*#141414/.test(baseCss), 'select option does not use legacy gray #141414');
 
@@ -48,7 +48,7 @@ assert(!/select option[^}]*#141414/.test(baseCss), 'select option does not use l
 console.log('\n--- 3. Testing Logged-In Dashboard Shell (css/layout.css) ---');
 const layoutCss = readFileSync(join(repoRoot, 'css', 'layout.css'), 'utf8');
 
-assert(/#app\s*\{[^}]*background-color:\s*var\(--color-bg\);/.test(layoutCss), '#app background-color is var(--color-bg)');
+assert(/#app\s*\{[^}]*background-color:\s*var\(--color-bg\)(?:\s*!important)?;/.test(layoutCss), '#app background-color is var(--color-bg)');
 assert(/\.app-main\s*\{[^}]*background-color:\s*var\(--color-bg\);/.test(layoutCss), '.app-main workspace background is var(--color-bg)');
 assert(/\.app-header\s*\{[^}]*background-color:\s*var\(--color-surface\);/.test(layoutCss), '.app-header background-color is var(--color-surface)');
 assert(/\.app-sidebar\s*\{[^}]*background-color:\s*var\(--color-surface\);/.test(layoutCss), '.app-sidebar background-color is var(--color-surface)');

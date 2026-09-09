@@ -13,7 +13,7 @@ import { EXTRACT_SYSTEM, SUMMARIZE_SYSTEM, DELAY_CAUSE_SYSTEM, TRANSCRIBE_HINT, 
 
 const LLM_MODEL = '@cf/meta/llama-3.1-8b-instruct-fp8';
 
-async function runLlmJson(env, system, payload, maxTokens = 400) {
+export async function runLlmJson(env, system, payload, maxTokens = 400) {
   if (!env.AI) return null;
   const messages = [
     { role: 'system', content: system },

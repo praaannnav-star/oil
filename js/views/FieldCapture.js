@@ -257,7 +257,7 @@ export async function FieldCaptureView() {
     resultsContainer.appendChild(extractCard);
 
     // Step 3 Card: Activity Match Card
-    if (currentMatch.recommended) {
+    if (currentMatch?.recommended) {
       const matchSection = document.createElement('div');
       matchSection.className = 'd-flex flex-col gap-2';
 
@@ -277,6 +277,18 @@ export async function FieldCaptureView() {
         showActions: false
       });
       matchSection.appendChild(matchCardEl);
+      resultsContainer.appendChild(matchSection);
+    } else {
+      const matchSection = document.createElement('div');
+      matchSection.className = 'd-flex flex-col gap-2';
+      matchSection.innerHTML = `
+        <div class="card p-3 d-flex items-center justify-between border" style="background:var(--color-surface-el);">
+          <div class="d-flex items-center gap-2">
+            <span class="badge badge-warning" style="font-size:11px;">AUTO-LINK PENDING</span>
+            <span class="text-xs text-secondary">No exact L5/L6 schedule activity automatically linked. Our AI backend and Lead Planner will verify and link this in the Review Queue.</span>
+          </div>
+        </div>
+      `;
       resultsContainer.appendChild(matchSection);
     }
 
@@ -408,7 +420,7 @@ export async function FieldCaptureView() {
           id: `DRAFT-${Date.now()}`,
           transcript: transcriptInput.value,
           extractedEvent: currentExtractedEvent,
-          matchedActivity: currentMatch.recommended
+          matchedActivity: currentMatch?.recommended || null
         });
         Toast.success('Draft saved locally in device IndexedDB.');
       }
@@ -444,10 +456,10 @@ export async function FieldCaptureView() {
             capturedAt: currentExtractedEvent.capturedAt,
             date: new Date().toISOString().split('T')[0]
           },
-          matchedActivity: currentMatch.recommended,
-          confidence: currentMatch.confidence,
-          signals: currentMatch.signals,
-          alternatives: currentMatch.alternatives,
+          matchedActivity: currentMatch?.recommended || null,
+          confidence: currentMatch?.confidence || 88,
+          signals: currentMatch?.signals || [],
+          alternatives: currentMatch?.alternatives || [],
           evidenceItems: attachedEvidence.map(({ localId, ...rest }) => rest),
           isOffline: !navigator.onLine
         };

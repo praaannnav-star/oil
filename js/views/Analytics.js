@@ -267,7 +267,8 @@ export async function AnalyticsView() {
       discCard.className = 'card p-4 gap-3';
 
       const discListHtml = breakdown.map(d => {
-        const barColorClass = d.status === 'on-track' ? 'confidence-high' : (d.status === 'at-risk' ? 'confidence-medium' : 'confidence-low');
+        const hasData = d.hasData !== false && d.activityCount > 0;
+        const barColorClass = !hasData ? 'confidence-low' : (d.status === 'on-track' ? 'confidence-high' : (d.status === 'at-risk' ? 'confidence-medium' : 'confidence-low'));
         const varColor = d.variance >= 0 ? 'text-success' : (d.variance >= -6 ? 'text-warning' : 'text-danger');
         const varSign = d.variance > 0 ? '+' : '';
 
@@ -276,17 +277,21 @@ export async function AnalyticsView() {
             <div class="d-flex justify-between items-center text-xs mb-1">
               <div class="d-flex items-center gap-2">
                 <strong class="text-primary">${escapeHtml(d.label)}</strong>
-                <span class="badge badge-neutral font-mono" style="font-size:9px; padding:1px 5px;">🤖 AI: ${d.avgConfidence}%</span>
+                ${hasData 
+                  ? `<span class="badge badge-neutral font-mono" style="font-size:9px; padding:1px 5px;">🤖 AI: ${d.avgConfidence}%</span>`
+                  : `<span class="badge badge-warning font-mono" style="font-size:9px; padding:1px 5px;">Awaiting Field Reports</span>`}
               </div>
               <div class="d-flex items-center gap-2 font-mono">
-                <span class="text-secondary">${d.actualProgress}% Act / ${d.plannedProgress}% Plan</span>
-                <span class="${varColor} font-bold">(${varSign}${d.variance}%)</span>
+                ${hasData 
+                  ? `<span class="text-secondary">${d.actualProgress}% Act / ${d.plannedProgress}% Plan</span>
+                     <span class="${varColor} font-bold">(${varSign}${d.variance}%)</span>`
+                  : `<span class="text-muted text-xs">0 Activities Linked</span>`}
               </div>
             </div>
             <div class="confidence-bar-bg" style="height: 10px; position:relative;">
-              <div class="confidence-bar-fill ${barColorClass}" style="width: ${Math.min(100, Math.max(0, d.actualProgress))}%;"></div>
-              <!-- Planned Target Line Marker -->
-              <div style="position:absolute; top:-2px; bottom:-2px; left:${Math.min(100, Math.max(0, d.plannedProgress))}%; width:2px; background:var(--color-text-primary); box-shadow:0 0 4px rgba(0,0,0,0.8);" title="Plan: ${d.plannedProgress}%"></div>
+              <div class="confidence-bar-fill ${barColorClass}" style="width: ${hasData ? Math.min(100, Math.max(0, d.actualProgress)) : 0}%;"></div>
+              ${hasData ? `<!-- Planned Target Line Marker -->
+              <div style="position:absolute; top:-2px; bottom:-2px; left:${Math.min(100, Math.max(0, d.plannedProgress))}%; width:2px; background:var(--color-text-primary); box-shadow:0 0 4px rgba(0,0,0,0.8);" title="Plan: ${d.plannedProgress}%"></div>` : ''}
             </div>
           </div>
         `;

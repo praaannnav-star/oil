@@ -38,7 +38,10 @@ export const ReportsService = {
       ? input
       : input == null ? '' : String(input);
 
-    if (!API.useMock) {
+    const pctMatch = transcript.match(/(\d{1,3})\s*%/);
+    const textPct = pctMatch ? Math.min(100, Math.max(0, Number(pctMatch[1]))) : null;
+
+    if (navigator.onLine) {
       try {
         const { ApiHttp } = await import('./http.js');
         const res = await ApiHttp.request('/extract', {
@@ -46,14 +49,21 @@ export const ReportsService = {
           body: { transcript }
         });
         if (res && res.event) {
+          const ev = res.event;
+          const evProgress = ev.progress != null && !isNaN(ev.progress)
+            ? Number(ev.progress)
+            : (textPct != null ? textPct : (ev.status === 'Completed' ? 100 : null));
+
           return {
-            discipline: res.event.discipline || 'Civil',
-            activity: res.event.activity || transcript.slice(0, 70),
-            assetTag: res.event.assetTag || 'General Area',
+            discipline: ev.discipline || 'Civil',
+            activity: ev.activity || transcript.slice(0, 70),
+            assetTag: ev.assetTag || 'General Area',
             capturedAt: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }) + ' IST',
-            status: res.event.status || 'In Progress',
-            blocker: res.event.blocker || 'None',
-            date: res.event.date || new Date().toISOString().split('T')[0]
+            status: ev.status || (evProgress === 100 ? 'Completed' : 'In Progress'),
+            blocker: ev.blocker || 'None',
+            progress: evProgress,
+            date: ev.date || new Date().toISOString().split('T')[0],
+            source: res.source || 'llm'
           };
         }
       } catch (err) {
@@ -119,6 +129,7 @@ export const ReportsService = {
       }) + ' IST',
       status,
       blocker,
+      progress: textPct != null ? textPct : (status === 'Completed' ? 100 : null),
       date: new Date().toISOString().split('T')[0]
     };
   },
