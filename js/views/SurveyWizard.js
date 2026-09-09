@@ -170,15 +170,7 @@ export async function SurveyWizardView() {
       formCard.appendChild(wrap);
     });
 
-    // Optional dedicated progress percentage field for every survey report
-    const progressWrap = document.createElement('div');
-    progressWrap.className = 'd-flex flex-col gap-1';
-    progressWrap.innerHTML = `
-      <label class="text-xs font-bold text-muted">PROGRESS ACHIEVED (%)</label>
-      <input type="number" name="progress_percentage" min="0" max="100" placeholder="e.g. 75 (0 - 100%)" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--color-border);">
-      <span class="text-xs text-muted">Estimated physical progress for schedule reconciliation upon acceptance.</span>
-    `;
-    formCard.appendChild(progressWrap);
+
 
     // Optional photo evidence (Single image enforcement)
     const photoWrap = document.createElement('div');
@@ -248,10 +240,7 @@ export async function SurveyWizardView() {
           }
           answers[q.id] = val;
         }
-        const pctEl = formCard.querySelector('[name="progress_percentage"]');
-        if (pctEl && pctEl.value.trim()) {
-          answers.progress_percentage = pctEl.value.trim();
-        }
+
         if (!valid) return;
         template._answers = answers;
         step = 3;
