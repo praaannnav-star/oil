@@ -84,7 +84,32 @@ export function EvidenceViewer({ items = [], onAdd = null }) {
       `;
       previewEl.appendChild(metaBox);
 
-      Modal({
+      const actionsBox = document.createElement('div');
+      actionsBox.className = 'd-flex justify-end gap-2 mt-2';
+      
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'btn btn-danger btn-sm';
+      deleteBtn.textContent = 'Delete Evidence';
+      deleteBtn.onclick = async () => {
+        if (confirm('Are you sure you want to delete this evidence?')) {
+          deleteBtn.textContent = 'Deleting...';
+          deleteBtn.disabled = true;
+          const { EvidenceService } = await import('../services/evidence.js');
+          await EvidenceService.deleteEvidence(item.id);
+          modalInstance.close();
+          card.remove(); // Removes from grid
+          
+          // If grid is empty after removal
+          if (grid.children.length === 0) {
+            grid.parentElement.innerHTML = '<div class="p-4 text-center text-muted text-sm rounded" style="background:var(--color-surface); border:1px dashed var(--color-border);">No evidence files attached.</div>';
+          }
+        }
+      };
+      
+      actionsBox.appendChild(deleteBtn);
+      previewEl.appendChild(actionsBox);
+
+      const modalInstance = Modal({
         title: 'Evidence Detail & Verification',
         body: previewEl
       });

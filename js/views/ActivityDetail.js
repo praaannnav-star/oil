@@ -242,8 +242,8 @@ export async function ActivityDetailView(params = {}) {
           </div>
         </div>
 
-        <div class="card p-4 gap-2" style="background:rgba(37, 99, 235, 0.08); border-color:rgba(37, 99, 235, 0.3);">
-          <strong class="text-xs text-info uppercase">5. Corrective Action & Recovery Plan</strong>
+        <div class="card p-4 gap-2" style="background:var(--color-primary-dim); border-color:var(--color-primary-glow);">
+          <strong class="text-xs text-primary uppercase">5. Corrective Action & Recovery Plan</strong>
           <p class="text-sm text-primary">${dev.correctiveAction}</p>
         </div>
       `;

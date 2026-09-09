@@ -11,7 +11,15 @@ export function reconcileActivity(act, event) {
 
   if (!next.actualStart) next.actualStart = reportDate;
 
-  if (reportedStatus.includes('completed')) {
+  if (event?.progress !== undefined && event?.progress !== null && !isNaN(event.progress)) {
+    next.progress = Math.min(100, Math.max(0, Math.round(Number(event.progress))));
+    if (next.progress >= 100) {
+      next.status = 'completed';
+      if (!next.actualFinish) next.actualFinish = reportDate;
+    } else if (next.progress > 0 && next.status === 'pending') {
+      next.status = 'in-progress';
+    }
+  } else if (reportedStatus.includes('completed')) {
     next.progress = 100;
     next.status = 'completed';
     next.actualFinish = reportDate;

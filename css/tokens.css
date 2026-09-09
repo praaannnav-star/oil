@@ -1,28 +1,29 @@
 :root {
-  /* Surface & Background (Light Theme based on Logo) */
-  --color-bg: #F9FAFB;
-  --color-surface: #FFFFFF;
-  --color-surface-el: #F3F4F6;
-  --color-surface-hover: #E5E7EB;
-  --color-surface-active: #D1D5DB;
+  color-scheme: dark;
+  /* Surface & Background (Dark Theme) */
+  --color-bg: #0A0A0A;
+  --color-surface: #141414;
+  --color-surface-el: #1F1F1F;
+  --color-surface-hover: #292929;
+  --color-surface-active: #333333;
 
   /* Borders & Dividers */
-  --color-border: #E5E7EB;
-  --color-border-light: #F3F4F6;
-  --color-border-subtle: rgba(0, 0, 0, 0.05);
+  --color-border: #292929;
+  --color-border-light: #1F1F1F;
+  --color-border-subtle: rgba(255, 255, 255, 0.05);
 
   /* Typography */
-  --color-text-primary: #111827;
-  --color-text-secondary: #374151;
-  --color-text-muted: #6B7280;
-  --color-text-inverse: #FFFFFF;
+  --color-text-primary: #FAFAFA;
+  --color-text-secondary: #A3A3A3;
+  --color-text-muted: #737373;
+  --color-text-inverse: #000000;
 
   /* Brand Accents */
   --color-primary: #E0291D;
-  --color-primary-hover: #C52319;
+  --color-primary-hover: #FF3B2F;
   --color-primary-dim: rgba(224, 41, 29, 0.15);
-  --color-primary-glow: rgba(224, 41, 29, 0.25);
-  --color-secondary: #111827;
+  --color-primary-glow: rgba(224, 41, 29, 0.35);
+  --color-secondary: #FAFAFA;
 
   /* Functional Semantic Statuses */
   --color-success: #10B981;

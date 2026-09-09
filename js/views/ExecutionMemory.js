@@ -66,8 +66,8 @@ export async function ExecutionMemoryView() {
   // Top Insights Card
   const insightCard = document.createElement('div');
   insightCard.className = 'card p-4 gap-3';
-  insightCard.style.background = 'linear-gradient(180deg, rgba(37, 99, 235, 0.08) 0%, var(--color-surface) 100%)';
-  insightCard.style.borderColor = 'rgba(37, 99, 235, 0.3)';
+  insightCard.style.background = 'linear-gradient(180deg, var(--color-primary-dim) 0%, var(--color-surface) 100%)';
+  insightCard.style.borderColor = 'var(--color-primary-glow)';
 
   insightCard.innerHTML = `
     <div class="card-header p-0 mb-1">
@@ -182,11 +182,18 @@ export async function ExecutionMemoryView() {
     }
   ];
 
-  const delayTable = Table({
-    columns: delayColumns,
-    data: memoryData.historicalDelayCauses
-  });
-  delayCard.appendChild(delayTable);
+  if (!memoryData.historicalDelayCauses || memoryData.historicalDelayCauses.length === 0) {
+    const emptyNotice = document.createElement('div');
+    emptyNotice.className = 'p-4 text-center text-muted text-sm';
+    emptyNotice.textContent = 'No recurring delay events recorded yet. Field reports with blocker details will automatically populate this empirical analysis.';
+    delayCard.appendChild(emptyNotice);
+  } else {
+    const delayTable = Table({
+      columns: delayColumns,
+      data: memoryData.historicalDelayCauses
+    });
+    delayCard.appendChild(delayTable);
+  }
   container.appendChild(delayCard);
 
   // Section 2: Discipline Performance Historical Matrix

@@ -248,6 +248,10 @@ export async function FieldCaptureView() {
         <label class="text-xs font-bold text-muted">IDENTIFIED BLOCKER</label>
         <input type="text" id="extract-blocker" value="${escapeHtml(currentExtractedEvent.blocker)}" class="w-full">
       </div>
+      <div class="d-flex flex-col gap-1">
+        <label class="text-xs font-bold text-muted">PROGRESS ACHIEVED (%)</label>
+        <input type="number" id="extract-progress" min="0" max="100" placeholder="0 - 100%" value="${currentExtractedEvent.progress ?? ''}" class="w-full">
+      </div>
     `;
     extractCard.appendChild(grid);
     resultsContainer.appendChild(extractCard);
@@ -311,16 +315,18 @@ export async function FieldCaptureView() {
         // Fetch live location for evidence tagging
         let liveLocation = 'Location not available';
         const addEvidenceWithLoc = (locString) => {
-          attachedEvidence.push({
+          // Strictly single image in report (replace previous)
+          attachedEvidence = [{
             localId: `EVD-NEW-${Date.now()}`,
             filename: file.name,
             url: reader.result,
             type: file.type,
             uploadedBy: State.getState().currentUser.name,
             locationMeta: locString
-          });
+          }];
           renderAttachedThumbnails();
-          Toast.success('Photo evidence attached.');
+          addPhotoBtn.style.display = 'none'; // Hide button to enforce max 1
+          Toast.success('Photo evidence attached (1 max).');
         };
 
         try {
@@ -362,10 +368,17 @@ export async function FieldCaptureView() {
       attachedEvidence.forEach((item, idx) => {
         const t = document.createElement('div');
         t.className = 'card p-2 gap-1';
+        t.style.position = 'relative';
         t.innerHTML = `
+          <button type="button" class="delete-photo-btn" style="position:absolute; top:-4px; right:-4px; background:var(--color-danger); color:var(--color-text-inverse); border:none; border-radius:50%; width:20px; height:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px;" title="Delete photo">✕</button>
           <img src="${escapeHtml(item.url)}" style="height:80px; object-fit:cover; border-radius:4px;" alt="Evidence">
           <div class="text-xs font-semibold truncate">${escapeHtml(item.filename)}</div>
         `;
+        t.querySelector('.delete-photo-btn').addEventListener('click', () => {
+          attachedEvidence.splice(idx, 1);
+          renderAttachedThumbnails();
+          addPhotoBtn.style.display = ''; // Show button when photo is removed
+        });
         thumbsContainer.appendChild(t);
       });
     }
@@ -425,6 +438,9 @@ export async function FieldCaptureView() {
             assetTag: document.getElementById('extract-tag')?.value || currentExtractedEvent.assetTag,
             status: document.getElementById('extract-status')?.value || currentExtractedEvent.status,
             blocker: document.getElementById('extract-blocker')?.value || currentExtractedEvent.blocker,
+            progress: document.getElementById('extract-progress')?.value !== '' && !isNaN(document.getElementById('extract-progress')?.value)
+              ? Number(document.getElementById('extract-progress').value)
+              : currentExtractedEvent.progress,
             capturedAt: currentExtractedEvent.capturedAt,
             date: new Date().toISOString().split('T')[0]
           },

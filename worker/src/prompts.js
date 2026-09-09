@@ -84,3 +84,12 @@ Rules:
 - Echo all unchanged fields EXACTLY as they appeared in the original event. 
 - DO NOT modify any field unless explicitly requested by the reviewer notes.
 - Return ONLY a JSON object, no prose, no markdown fences.`;
+
+export const DISCIPLINE_CLASSIFY_SYSTEM = `You are an oil & gas construction schedule classifier.
+Given an activity description or field observation, classify it into exactly ONE discipline:
+Civil, Piping, Electrical, Instrumentation, Pipeline, HSE, or Mechanical.
+Return ONLY JSON: { "discipline": "Civil" | "Piping" | "Electrical" | "Instrumentation" | "Pipeline" | "HSE" | "Mechanical", "confidence": number }
+Rules:
+- confidence must be an integer 0-100.
+- Return ONLY valid JSON, no markdown fences, no explanatory text.`;
+

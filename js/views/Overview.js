@@ -6,6 +6,7 @@ import { Button } from '../components/Button.js';
 import { Table } from '../components/Table.js';
 import { Icons } from '../components/Icons.js';
 import { AppRouter } from '../router.js';
+import { State } from '../state.js';
 import { escapeHtml } from '../utils/dom.js';
 
 function monoMetric(label, value, detail) {
@@ -71,7 +72,7 @@ export async function OverviewView() {
   container.appendChild(kpiGrid);
 
   // "What changed since yesterday?" Intelligence Box (Mandatory Core Feature)
-  const prj = await ProjectsService.getProject('PRJ-OIL-DUL-001');
+  const currentProjectId = State.getState().currentProjectId || 'PRJ-OIL-DUL-001';
   const intelligenceCard = document.createElement('div');
   intelligenceCard.className = 'card gap-3';
 
@@ -86,7 +87,7 @@ export async function OverviewView() {
   `;
 
   // Derived from real field data — no hardcoded intelligence blocks
-  const digestSignals = await ReportsService.summarizeDailyDigest('PRJ-OIL-DUL-001');
+  const digestSignals = await ReportsService.summarizeDailyDigest(currentProjectId);
   const digestGrid = document.createElement('div');
   digestGrid.className = 'd-grid grid-3 gap-3';
   digestSignals.forEach(signal => {

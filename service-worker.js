@@ -1,4 +1,4 @@
-const CACHE_NAME = 'oil-tracker-v7';
+const CACHE_NAME = 'oil-tracker-v18';
 const APP_SHELL = [
   './',
   './index.html',
@@ -38,6 +38,7 @@ const APP_SHELL = [
   './js/components/Button.js',
   './js/components/Card.js',
   './js/components/CanvasLiquid.js',
+  './js/components/BridgeShader.js',
   './js/components/Modal.js',
   './js/components/Drawer.js',
   './js/components/Table.js',

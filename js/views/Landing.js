@@ -5,39 +5,42 @@ import { PWA } from '../pwa.js';
 
 export async function LandingView() {
   const container = document.createElement('div');
-  container.className = 'product-landing';
+  container.className = 'product-landing product-landing-pro';
   container.innerHTML = `
-    <div class="landing-orbit landing-orbit-one"></div>
-    <div class="landing-orbit landing-orbit-two"></div>
+    <div class="landing-industrial-scene" aria-hidden="true"><canvas id="landing-industrial-canvas"></canvas></div>
     <section class="landing-hero">
-      <div class="landing-brand"><img src="./assets/oil_logo.png" alt="Oil India Limited"><span>OIL INDIA LIMITED</span></div>
+      <div class="landing-brand"><img src="./assets/oil_logo.png" alt="Oil India Limited"><span>OIL INDIA LIMITED<br><small>FIELD TO SCHEDULE BRIDGE</small></span></div>
       <div class="landing-copy">
-        <span class="landing-eyebrow">SIH26122 · FIELD TO SCHEDULE BRIDGE</span>
-        <h1>Every field update.<br><em>One trusted project picture.</em></h1>
+        <span class="landing-eyebrow">SIH26122 · OPERATIONS INTELLIGENCE</span>
+        <h1>From field signal to<br><em>trusted delivery picture.</em></h1>
         <p>Capture site progress, link it to L5/L6 schedules, validate the evidence, and give every delivery role the operational clarity it needs.</p>
       </div>
-      <div class="landing-actions">
+      <div class="landing-actions landing-actions-pro">
         <button id="landing-enter" class="btn btn-primary btn-lg">Enter Operations</button>
         <button id="landing-install" class="btn btn-secondary btn-lg d-none">Install Field PWA</button>
         <button id="landing-scroll-pipeline" class="landing-text-link" style="background:none;border:none;cursor:pointer;">See the live pipeline ↓</button>
       </div>
     </section>
 
-    <section id="landing-pipeline" class="landing-workflow landing-pipeline">
-      <h2 class="landing-section-title">The live pipeline — real numbers from the platform</h2>
-      <article><span id="stat-capture">—</span><h2>Capture</h2><p>Field reports submitted from the offline-first PWA</p></article>
-      <article><span id="stat-extract">—</span><h2>Extract</h2><p>Schedule activities structured under active projects</p></article>
-      <article><span id="stat-match">—</span><h2>Evidence</h2><p>Photo packets linked to schedule activities</p></article>
-      <article><span id="stat-review">—</span><h2>Review</h2><p>Items awaiting planner validation right now</p></article>
-      <article><span id="stat-reconcile">—</span><h2>Reconcile</h2><p>Reports processed through the schedule bridge</p></article>
+    <section id="landing-pipeline" class="landing-pro-section">
+      <span class="landing-eyebrow">LIVE PIPELINE</span><h2>Every update becomes an<br>operational signal.</h2>
+      <div class="landing-workflow landing-pipeline">
+        <article><span id="stat-capture">—</span><h3>Capture</h3><p>Field reports submitted from the offline-first PWA</p></article>
+        <article><span id="stat-extract">—</span><h3>Schedule Link</h3><p>L5/L6 activities structured under active projects</p></article>
+        <article><span id="stat-match">—</span><h3>Evidence</h3><p>Photo packets linked to schedule activities</p></article>
+        <article><span id="stat-review">—</span><h3>Review</h3><p>Items awaiting planner validation right now</p></article>
+        <article><span id="stat-reconcile">—</span><h3>Reconcile</h3><p>Reports processed through the schedule bridge</p></article>
+      </div>
     </section>
 
-    <section class="landing-workflow landing-roles">
-      <h2 class="landing-section-title">Built for every delivery role</h2>
-      <article data-role="Field Supervisor"><span>👷</span><h2>Field Supervisor</h2><p>Voice-to-schedule capture with photos, offline drafts and auto-sync.</p></article>
-      <article data-role="Planner"><span>📐</span><h2>Planner</h2><p>Transparent AI match suggestions with confidence you can audit.</p></article>
-      <article data-role="Reviewer"><span>🔍</span><h2>QAQC Reviewer</h2><p>Evidence-backed verification before any schedule actual moves.</p></article>
-      <article data-role="Executive"><span>👔</span><h2>Executive</h2><p>Daily derived intelligence — never fabricated status theatre.</p></article>
+    <section class="landing-pro-section">
+      <span class="landing-eyebrow">ROLE-BASED OPERATIONS</span><h2>One shared picture.<br>Built for every delivery role.</h2>
+      <div class="landing-workflow landing-roles">
+        <article data-role="Field Supervisor"><span>⌁</span><h3>Field Supervisor</h3><p>Voice-to-schedule capture with photos, offline drafts and auto-sync.</p></article>
+        <article data-role="Planner"><span>⌘</span><h3>Planner</h3><p>Transparent AI match suggestions with confidence you can audit.</p></article>
+        <article data-role="Reviewer"><span>◎</span><h3>QAQC Reviewer</h3><p>Evidence-backed verification before any schedule actual moves.</p></article>
+        <article data-role="Executive"><span>↗</span><h3>Executive</h3><p>Daily derived intelligence, grounded in verified delivery signals.</p></article>
+      </div>
     </section>
 
     <section class="landing-trust-strip">
@@ -92,5 +95,24 @@ export async function LandingView() {
   const evidenceEl = container.querySelector('#trust-evidence');
   evidenceEl.textContent = `📸 ${stats.evidence} verified evidence packets`;
 
+  startIndustrialScene(container.querySelector('#landing-industrial-canvas'));
+
   return container;
+}
+
+function startIndustrialScene(canvas) {
+  const context = canvas?.getContext('2d');
+  if (!context) return;
+  let frame;
+  const resize = () => { canvas.width = canvas.clientWidth * devicePixelRatio; canvas.height = canvas.clientHeight * devicePixelRatio; context.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); };
+  const draw = (time) => {
+    const width = canvas.clientWidth, height = canvas.clientHeight, horizon = height * .42, speed = time * .00022;
+    context.clearRect(0, 0, width, height);
+    for (let i = 0; i < 14; i++) { const d = (i / 14 + speed) % 1, y = horizon + d * d * height * .7, spread = 35 + d * width * .52; context.strokeStyle = `rgba(223,115,255,${.04 + d * .14})`; context.beginPath(); context.moveTo(width / 2 - spread, y); context.lineTo(width / 2 + spread, y); context.stroke(); }
+    context.strokeStyle = 'rgba(0,218,116,.22)'; context.lineWidth = 7; [[.12,.42],[.88,.58]].forEach(([from, to]) => { context.beginPath(); context.moveTo(width * from, height); context.lineTo(width * to, horizon); context.stroke(); });
+    context.lineWidth = 2; for (let i = 0; i < 4; i++) { const z = (i / 4 + speed * .35) % 1, x = width * (.5 + (i % 2 ? .19 : -.19) * z), y = horizon + z * height * .44, size = 15 + z * 75; context.strokeStyle = `rgba(223,115,255,${.1 + z * .35})`; context.beginPath(); context.moveTo(x - size, y + size); context.lineTo(x, y - size * 1.8); context.lineTo(x + size, y + size); context.stroke(); }
+    frame = requestAnimationFrame(draw);
+  };
+  new ResizeObserver(resize).observe(canvas); resize(); draw(0);
+  canvas.closest('.product-landing')._industrialScene = () => cancelAnimationFrame(frame);
 }

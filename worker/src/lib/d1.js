@@ -177,6 +177,7 @@ export function mapReview(row) {
     tabCategory: row.tab_category,
     reviewer: row.reviewer,
     reviewedAt: row.reviewed_at,
+    createdAt: row.created_at,
     rejectionReason: row.rejection_reason ?? undefined,
     age: row.age,
     aiVerification: parseJson(row.ai_verification_json, null)

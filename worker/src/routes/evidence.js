@@ -103,5 +103,29 @@ export default [
       });
       return json(mapEvidence(await db.prepare('SELECT * FROM evidence WHERE id = ?').bind(id).first()), 201);
     }
+  },
+
+  {
+    method: 'DELETE',
+    pattern: '/api/evidence/:id',
+    opts: { auth: true },
+    async handler({ params, db, user, audit }) {
+      const id = params.id;
+      const evd = await db.prepare('SELECT * FROM evidence WHERE id = ?').bind(id).first();
+      if (!evd) return err(404, 'Evidence not found');
+      
+      await db.prepare('DELETE FROM evidence WHERE id = ?').bind(id).run();
+      
+      await audit.append({
+        id: `AUD-${Date.now()}`,
+        activityId: evd.activity_id || null,
+        action: 'Evidence Deleted',
+        actor: user.name,
+        role: user.role,
+        detail: `Evidence ${evd.filename || evd.id} deleted`
+      });
+      
+      return json({ success: true });
+    }
   }
 ];

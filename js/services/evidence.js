@@ -36,5 +36,25 @@ export const EvidenceService = {
     API.evidence.unshift(item);
     API.persist('evidence');
     return item;
+  },
+
+  async deleteEvidence(id) {
+    await API.delay();
+    const idx = API.evidence.findIndex(e => e.id === id);
+    if (idx !== -1) {
+      API.evidence.splice(idx, 1);
+      API.persist('evidence');
+      
+      if (!API.useMock && navigator.onLine) {
+        try {
+          const { ApiHttp } = await import('./http.js');
+          await ApiHttp.request(`/evidence/${id}`, { method: 'DELETE' });
+        } catch (err) {
+          console.warn('Live evidence delete failed:', err.message);
+        }
+      }
+      return true;
+    }
+    return false;
   }
 };

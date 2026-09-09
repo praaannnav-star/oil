@@ -79,36 +79,15 @@ export const SurveyService = {
       status: isOffline ? 'pending-sync' : 'submitted'
     };
 
-    if (isOffline) {
-      // Queue through the offline pipeline; SyncManager promotes it.
-      await DB.addPendingReport(submission);
-      return submission;
+    // Always queue through the offline pipeline to ensure durability; SyncManager promotes it to the backend.
+    await DB.addPendingReport(submission);
+
+    // If online, immediately trigger the sync engine to push to backend
+    if (!isOffline && navigator.onLine) {
+      import('../sync.js').then(({ Sync }) => {
+        if (Sync.syncPending) Sync.syncPending().catch(e => console.warn('Background sync failed:', e));
+      });
     }
-
-    API.surveys.unshift(submission);
-    API.persist('surveys');
-
-    API.reviewItems.unshift({
-      id: `REV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      reportId: submission.id,
-      source: `Survey — ${templateName}`,
-      reporter: submission.submittedBy,
-      discipline: 'HSE / Progress',
-      extractedEvent: {
-        activity: Object.values(answers).find(v => typeof v === 'string' && v.length > 12)?.slice(0, 70) || templateName,
-        status: String(answers.q_overall || answers.q_tomorrow || 'Submitted'),
-        blocker: 'None'
-      },
-      topMatch: null,
-      alternatives: [],
-      surveyAnswers: { ...answers },
-      state: 'needs-review',
-      tabCategory: 'needs-review',
-      reviewer: null,
-      reviewedAt: null,
-      age: 'Just now'
-    });
-    API.persist('reviewItems');
 
     await AuditService.appendAudit({
       activityId: 'GENERAL',

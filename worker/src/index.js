@@ -16,6 +16,7 @@ import surveyRoutes from './routes/surveys.js';
 import classifyRoutes from './routes/classify.js';
 import llmRoutes from './routes/llm.js';
 import assignmentRoutes from './routes/assignments.js';
+import analyticsRoutes from './routes/analytics.js';
 
 // Each entry: { method, pattern, handler, opts }
 //   opts.auth  -> Bearer JWT required (ctx.user injected)
@@ -29,7 +30,8 @@ const ROUTES = [
   ...surveyRoutes,
   ...classifyRoutes,
   ...llmRoutes,
-  ...assignmentRoutes
+  ...assignmentRoutes,
+  ...analyticsRoutes
 ].map(r => ({ ...r, parts: r.pattern.split('/').filter(Boolean) }));
 
 function matchRoute(method, pathParts) {

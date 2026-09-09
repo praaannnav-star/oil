@@ -6,6 +6,7 @@ import { json, err } from '../lib/http.js';
 import { canReview } from '../lib/authz.js';
 import { mapReview, mapActivity, mapProject, activityToRow, projectToRow } from '../lib/d1.js';
 import { reconcileActivity, rollupAll } from '../lib/reconcile.js';
+import { classifyDisciplineWithLlm } from '../lib/discipline.js';
 
 async function loadReview(db, id) {
   const row = await db.prepare('SELECT * FROM reviews WHERE id = ?').bind(id).first();
@@ -52,7 +53,7 @@ export default [
     method: 'POST',
     pattern: '/api/reviews/:id/approve',
     opts: { auth: true },
-    async handler({ db, params, body, user, audit }) {
+    async handler({ db, params, body, user, audit, env }) {
       if (!canReview(user)) {
         return err(403, `Role "${user.role}" is not permitted to approve matches.`);
       }
@@ -64,28 +65,45 @@ export default [
       const reviewerLabel = `${user.name} — ${user.title || user.role}`;
 
       const topMatch = JSON.parse(row.top_match_json || 'null');
+      const targetActivityId = body?.matchedActivityId || topMatch?.id;
+      let finalDiscipline = row.discipline;
 
-      // Approved match with a schedule target reconciles real actuals (plan A3).
-      if (topMatch?.id) {
-        const actRow = await db.prepare('SELECT * FROM activities WHERE id = ?').bind(topMatch.id).first();
-        if (!actRow) return err(404, `Matched activity ${topMatch.id} no longer exists`);
+      // Approved match with a schedule target reconciles real actuals
+      if (targetActivityId) {
+        const actRow = await db.prepare('SELECT * FROM activities WHERE id = ?').bind(targetActivityId).first();
+        if (!actRow) return err(404, `Matched activity ${targetActivityId} no longer exists`);
         const extracted = JSON.parse(row.extracted_json || '{}');
-        const updatedAct = reconcileActivity(mapActivity(actRow), extracted);
-        
-        if (body && body.approvedProgress !== undefined) {
-          updatedAct.progress = Number(body.approvedProgress);
-          if (updatedAct.progress >= 100) {
-            updatedAct.status = 'completed';
-            if (!updatedAct.actualFinish) updatedAct.actualFinish = new Date().toISOString().split('T')[0];
-          } else if (updatedAct.progress > 0 && updatedAct.status === 'pending') {
-            updatedAct.status = 'in-progress';
+        const surveyAnswers = JSON.parse(row.survey_answers_json || '{}');
+
+        finalDiscipline = actRow.discipline || finalDiscipline;
+
+        // Resolve reported progress percentage from approval body, extracted JSON, or survey answers
+        let reportedProgress = (body && body.approvedProgress !== undefined && body.approvedProgress !== null && body.approvedProgress !== '')
+          ? Number(body.approvedProgress)
+          : (extracted.progress !== undefined && extracted.progress !== null && extracted.progress !== ''
+              ? Number(extracted.progress)
+              : (surveyAnswers.q_pct !== undefined && surveyAnswers.q_pct !== ''
+                  ? Number(surveyAnswers.q_pct)
+                  : (surveyAnswers.progress_percentage !== undefined && surveyAnswers.progress_percentage !== ''
+                      ? Number(surveyAnswers.progress_percentage)
+                      : undefined)));
+
+        if (reportedProgress !== undefined && !isNaN(reportedProgress)) {
+          const currentProgress = Number(actRow.progress || 0);
+          if (body?.isReworkOverride) {
+            extracted.progress = Math.min(100, Math.max(0, reportedProgress));
+          } else {
+            // Protect against out-of-order progress updates
+            extracted.progress = Math.min(100, Math.max(currentProgress, reportedProgress));
           }
         }
+
+        const updatedAct = reconcileActivity(mapActivity(actRow), extracted);
 
         await db.prepare(
           `UPDATE activities SET actual_start=?, actual_finish=?, progress=?, status=?, variance=? WHERE id=?`
         ).bind(updatedAct.actualStart, updatedAct.actualFinish, updatedAct.progress, updatedAct.status,
-               updatedAct.variance ?? null, topMatch.id).run();
+               updatedAct.variance ?? null, targetActivityId).run();
 
         // Parent/project rollups
         const allActRows = (await db.prepare('SELECT * FROM activities').all()).results.map(mapActivity);
@@ -103,32 +121,51 @@ export default [
           ).bind(pr.delayed_activities_count, pr.actual_progress, pr.variance, pr.spi, pr.health, pr.id).run();
         }
 
+        // Keep record of match on the review item if it was manually linked
+        await db.prepare('UPDATE reviews SET top_match_json=? WHERE id=?')
+          .bind(JSON.stringify({ id: actRow.id, name: actRow.name, code: actRow.code, discipline: actRow.discipline }), params.id).run();
+
         // Mark the source report approved.
         if (row.report_id) {
-          await db.prepare('UPDATE field_reports SET status=?, reviewer=?, reviewed_at=? WHERE id=?')
-            .bind('approved', reviewerLabel, reviewedAt, row.report_id).run();
+          await db.prepare('UPDATE field_reports SET status=?, reviewer=?, reviewed_at=?, matched_activity_id=? WHERE id=?')
+            .bind('approved', reviewerLabel, reviewedAt, targetActivityId, row.report_id).run();
+          if (row.type === 'survey') {
+            await db.prepare('UPDATE surveys SET status=? WHERE id=?').bind('reviewed', row.report_id).run();
+          }
         }
 
         await audit.append({
           id: `AUD-${Date.now()}`,
-          activityId: topMatch.id,
+          activityId: targetActivityId,
           action: 'Activity Match Approved',
           actor: user.name,
           role: user.role,
-          detail: `Confirmed link to ${topMatch.code} (${topMatch.name}). Schedule actuals updated.`
+          detail: `Confirmed link to ${actRow.code} (${actRow.name}). Schedule actuals updated to ${updatedAct.progress}%.`
         });
-      } else if (row.report_id) {
-        // Survey-only or unlinked approvals still close the report out.
-        await db.prepare('UPDATE field_reports SET status=?, reviewer=?, reviewed_at=? WHERE id=?')
-          .bind('approved', reviewerLabel, reviewedAt, row.report_id).run();
-        if (row.type === 'survey') {
-          await db.prepare('UPDATE surveys SET status=? WHERE id=?').bind('reviewed', row.report_id).run();
+      } else {
+        // Classify discipline via LLM if unlinked or generic
+        const extracted = JSON.parse(row.extracted_json || '{}');
+        const textToClassify = extracted.activity || row.source || '';
+        if (textToClassify && (!finalDiscipline || finalDiscipline === 'HSE / Progress')) {
+          const classified = await classifyDisciplineWithLlm(env, textToClassify);
+          if (classified?.discipline) {
+            finalDiscipline = classified.discipline;
+          }
+        }
+
+        if (row.report_id) {
+          // Survey-only or unlinked approvals still close the report out.
+          await db.prepare('UPDATE field_reports SET status=?, reviewer=?, reviewed_at=? WHERE id=?')
+            .bind('approved', reviewerLabel, reviewedAt, row.report_id).run();
+          if (row.type === 'survey') {
+            await db.prepare('UPDATE surveys SET status=? WHERE id=?').bind('reviewed', row.report_id).run();
+          }
         }
       }
 
       await db.prepare(
-        'UPDATE reviews SET state=?, tab_category=?, reviewer=?, reviewed_at=? WHERE id=?'
-      ).bind('approved', 'approved', reviewerLabel, reviewedAt, params.id).run();
+        'UPDATE reviews SET state=?, tab_category=?, reviewer=?, reviewed_at=?, discipline=? WHERE id=?'
+      ).bind('approved', 'approved', reviewerLabel, reviewedAt, finalDiscipline, params.id).run();
 
       return json(mapReview(await loadReview(db, params.id)));
     }

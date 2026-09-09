@@ -97,6 +97,9 @@ class Router {
         console.warn('Error destroying liquid simulation', err);
       }
     }
+    if (this.currentViewEl && this.currentViewEl._industrialScene) {
+      this.currentViewEl._industrialScene();
+    }
 
     // Update active state on nav items
     document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(el => {

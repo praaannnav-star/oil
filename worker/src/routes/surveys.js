@@ -87,7 +87,11 @@ export default [
       const tplRow = await db.prepare('SELECT * FROM survey_templates WHERE id = ?').bind(body.templateId).first();
       const templateName = tplRow?.name || body.templateName || body.templateId;
       const answers = body.answers || {};
-      const photos = Array.isArray(body.photos) ? body.photos : [];
+      let photos = Array.isArray(body.photos) ? body.photos : [];
+      // Enforce single photo limit per report
+      if (photos.length > 1) {
+        photos = [photos[0]];
+      }
 
       await db.prepare(
         `INSERT INTO surveys (id, project_id, template_id, template_name, submitted_by, answers_json,
@@ -95,24 +99,40 @@ export default [
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).bind(
         id, body.projectId, body.templateId, templateName, body.submittedBy || user.name,
-        JSON.stringify(answers), JSON.stringify(photos), Number(body.photoCount ?? photos.length),
+        JSON.stringify(answers), JSON.stringify(photos), Number(photos.length),
         JSON.stringify(body.geo || null), 'submitted', body.isOffline ? new Date().toISOString() : null
       ).run();
 
       // First-class review item alongside field reports.
       const reviewId = `REV-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       const firstNarrative = Object.values(answers).find(v => typeof v === 'string' && v.length > 12);
+      const reportedProgress = answers.q_pct !== undefined && answers.q_pct !== ''
+        ? Number(answers.q_pct)
+        : (answers.progress !== undefined && answers.progress !== '' ? Number(answers.progress) : undefined);
+
+      // Attempt matching target activity if provided in survey
+      let topMatchJson = null;
+      const targetActId = body.matchedActivityId || body.activityId || answers.activity_id;
+      if (targetActId) {
+        const actRow = await db.prepare('SELECT id, name, code, discipline FROM activities WHERE id = ?').bind(targetActId).first();
+        if (actRow) {
+          topMatchJson = JSON.stringify({ id: actRow.id, name: actRow.name, code: actRow.code, discipline: actRow.discipline, confidence: 95 });
+        }
+      }
+
       await db.prepare(
         `INSERT INTO reviews (id, report_id, type, source, reporter, discipline, extracted_json,
            top_match_json, alternatives_json, survey_answers_json, state, tab_category, age)
-         VALUES (?, ?, 'survey', ?, ?, 'HSE / Progress', ?, NULL, '[]', ?, 'needs-review', 'needs-review', 'Just now')`
+         VALUES (?, ?, 'survey', ?, ?, 'HSE / Progress', ?, ?, '[]', ?, 'needs-review', 'needs-review', 'Just now')`
       ).bind(
         reviewId, id, `Survey — ${templateName}`, body.submittedBy || user.name,
         JSON.stringify({
           activity: firstNarrative?.slice(0, 70) || templateName,
           status: String(answers.q_overall || answers.q_tomorrow || 'Submitted'),
-          blocker: answers.q_constraint || 'None'
+          blocker: answers.q_constraint || 'None',
+          progress: reportedProgress !== undefined && !isNaN(reportedProgress) ? reportedProgress : undefined
         }),
+        topMatchJson,
         JSON.stringify(answers)
       ).run();
 

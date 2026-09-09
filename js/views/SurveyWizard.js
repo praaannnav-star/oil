@@ -170,29 +170,54 @@ export async function SurveyWizardView() {
       formCard.appendChild(wrap);
     });
 
-    // Optional photo evidence
+    // Optional dedicated progress percentage field for every survey report
+    const progressWrap = document.createElement('div');
+    progressWrap.className = 'd-flex flex-col gap-1';
+    progressWrap.innerHTML = `
+      <label class="text-xs font-bold text-muted">PROGRESS ACHIEVED (%)</label>
+      <input type="number" name="progress_percentage" min="0" max="100" placeholder="e.g. 75 (0 - 100%)" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--color-border);">
+      <span class="text-xs text-muted">Estimated physical progress for schedule reconciliation upon acceptance.</span>
+    `;
+    formCard.appendChild(progressWrap);
+
+    // Optional photo evidence (Single image enforcement)
     const photoWrap = document.createElement('div');
     photoWrap.className = 'd-flex flex-col gap-1';
-    photoWrap.innerHTML = `<label class="text-xs font-bold text-muted">PHOTO EVIDENCE (OPTIONAL)</label>`;
+    photoWrap.innerHTML = `<label class="text-xs font-bold text-muted">SITE PHOTO EVIDENCE (MAX 1 IMAGE)</label>`;
     const photoInput = document.createElement('input');
     photoInput.type = 'file';
     photoInput.accept = 'image/*';
     photoInput.capture = 'environment';
     photoInput.className = 'd-none';
+    const attachBtn = Button({ text: 'Attach Photo', icon: Icons.camera(), variant: 'secondary', size: 'sm', onClick: () => photoInput.click() });
+    const count = document.createElement('span');
+    count.className = 'text-xs text-muted d-flex items-center gap-2';
+
     photoInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
       if (file.size > 2 * 1024 * 1024) return Toast.warning('Photo exceeds the 2MB limit.');
       const reader = new FileReader();
       reader.onload = () => {
-        photos.push({ filename: file.name, url: reader.result, type: file.type });
-        count.textContent = `${photos.length} photo(s) attached`;
+        // Enforce strictly 1 photo in memory
+        photos = [{ filename: file.name, url: reader.result, type: file.type }];
+        attachBtn.style.display = 'none'; // Hide button
+        count.innerHTML = `
+          <div class="d-flex items-center gap-2">
+            <span class="badge badge-success" style="padding: 2px 8px; border-radius: 4px; background: var(--color-success-dim); color: var(--color-success);">✓ 1 photo attached (${escapeHtml(file.name)})</span>
+            <button type="button" class="btn btn-ghost" style="padding: 2px 6px; font-size: 12px; height: auto;" id="remove-survey-photo" title="Remove photo">✕</button>
+          </div>
+        `;
+        count.querySelector('#remove-survey-photo').addEventListener('click', () => {
+          photos = [];
+          photoInput.value = ''; // Reset input
+          count.innerHTML = '';
+          attachBtn.style.display = ''; // Show button
+        });
       };
       reader.readAsDataURL(file);
     });
-    const attachBtn = Button({ text: 'Attach Photo', icon: Icons.camera(), variant: 'secondary', size: 'sm', onClick: () => photoInput.click() });
-    const count = document.createElement('span');
-    count.className = 'text-xs text-muted';
+
     photoWrap.appendChild(photoInput);
     const row = document.createElement('div');
     row.className = 'd-flex items-center gap-3';
@@ -222,6 +247,10 @@ export async function SurveyWizardView() {
             break;
           }
           answers[q.id] = val;
+        }
+        const pctEl = formCard.querySelector('[name="progress_percentage"]');
+        if (pctEl && pctEl.value.trim()) {
+          answers.progress_percentage = pctEl.value.trim();
         }
         if (!valid) return;
         template._answers = answers;

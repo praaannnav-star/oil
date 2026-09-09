@@ -322,9 +322,56 @@ export async function ReviewQueueView() {
       unmatchedBox.className = 'card p-4 text-center text-muted gap-2';
       unmatchedBox.innerHTML = `
         <div class="text-md font-bold text-danger">No L5/L6 Schedule Baseline Match Identified</div>
-        <p class="text-xs text-secondary">This observation may represent non-WBS emergency work or require manual schedule activity mapping.</p>
+        <p class="text-xs text-secondary mb-3">This observation may represent non-WBS emergency work or require manual schedule activity mapping.</p>
+        <div class="d-flex flex-col gap-2 align-start text-left w-100 p-3 rounded" style="background: var(--color-surface-hover); border: 1px solid var(--color-border);">
+          <label class="text-xs font-bold text-muted uppercase">Manual Activity Mapping</label>
+          <select id="manual-activity-select" class="input flex-1 w-100">
+            <option value="">-- Select an Activity --</option>
+          </select>
+          <button id="btn-manual-map" class="btn btn-secondary btn-sm w-100" disabled>Apply Manual Match</button>
+        </div>
       `;
       drawerContent.appendChild(unmatchedBox);
+
+      // Populate select dynamically
+      setTimeout(async () => {
+        const selectEl = unmatchedBox.querySelector('#manual-activity-select');
+        const btnMap = unmatchedBox.querySelector('#btn-manual-map');
+        const { API } = await import('../services/api.js');
+        const l56Acts = API.activities.filter(a => a.level === 'L5' || a.level === 'L6');
+        
+        l56Acts.forEach(act => {
+          const opt = document.createElement('option');
+          opt.value = act.id;
+          opt.textContent = `${act.code} — ${act.name} (${act.discipline})`;
+          selectEl.appendChild(opt);
+        });
+
+        selectEl.addEventListener('change', () => {
+          btnMap.disabled = !selectEl.value;
+          if (selectEl.value) {
+            btnMap.classList.remove('btn-secondary');
+            btnMap.classList.add('btn-primary');
+          } else {
+            btnMap.classList.add('btn-secondary');
+            btnMap.classList.remove('btn-primary');
+          }
+        });
+
+        btnMap.addEventListener('click', () => {
+          const selectedAct = l56Acts.find(a => a.id === selectEl.value);
+          if (selectedAct) {
+            item.topMatch = {
+              ...selectedAct,
+              confidence: 100,
+              signals: [{ label: 'Manually mapped by Reviewer', match: true }]
+            };
+            API.persist('reviewItems');
+            if (window._currentDrawer) window._currentDrawer.close();
+            openReviewDrawer(item);
+          }
+        });
+      }, 0);
     }
 
     // Section 2b: Survey Answers (first-class survey submissions)
@@ -457,6 +504,16 @@ export async function ReviewQueueView() {
     }
     
     if (item.state !== 'approved' && item.topMatch?.id) {
+      const currentActProgress = Number(item.topMatch?.progress || 0);
+      let isRework = false;
+
+      const getDeltaText = (val) => {
+        const deltaAct = val - currentActProgress;
+        const sign = deltaAct > 0 ? '+' : '';
+        const projDelta = (deltaAct / 10).toFixed(1);
+        return `${sign}${deltaAct}% to Activity (${val}%) • ${sign}${projDelta}% to Project Total`;
+      };
+
       const progBox = document.createElement('div');
       progBox.className = 'card p-3 gap-2 mt-3';
       progBox.style.border = '1px solid var(--color-primary-dim)';
@@ -467,22 +524,41 @@ export async function ReviewQueueView() {
           <span class="badge badge-pending font-mono" id="slider-val-display">${progressVal}%</span>
         </div>
         ${wasAutoCorrected ? `<span class="text-xs text-primary mt-1 font-semibold">✨ AI Vision adjusted to ${progressVal}% based on photo evidence.</span>` : ''}
+        <div class="p-2 rounded mt-1 text-xs" style="background: rgba(0, 218, 116, 0.1); border: 1px solid rgba(0, 218, 116, 0.3);">
+          <span class="font-bold text-success">Calculated New Progress Delta:</span>
+          <span id="delta-display" class="font-mono ml-1 font-semibold">${getDeltaText(progressVal)}</span>
+        </div>
         <input type="range" id="progress-slider" min="0" max="100" step="5" value="${progressVal}" class="w-full mt-2" style="cursor:ew-resize;">
         <div class="d-flex justify-between text-xs text-muted mt-1 font-mono">
           <span>0%</span>
           <span>50%</span>
           <span>100%</span>
         </div>
-        <p class="text-xs text-secondary mt-1">Adjust slider based on visual evidence before approving.</p>
+        <div class="d-flex items-center gap-2 mt-2 pt-2 border-t border-border">
+          <input type="checkbox" id="rework-override-check" style="cursor:pointer;">
+          <label for="rework-override-check" class="text-xs text-muted" style="cursor:pointer;">Rework Override (allow negative progress adjustment)</label>
+        </div>
       `;
       drawerContent.appendChild(progBox);
 
       const slider = progBox.querySelector('#progress-slider');
       const display = progBox.querySelector('#slider-val-display');
+      const deltaDisplay = progBox.querySelector('#delta-display');
+      const reworkCheck = progBox.querySelector('#rework-override-check');
+
       slider.addEventListener('input', (e) => {
-        display.textContent = e.target.value + '%';
         progressVal = Number(e.target.value);
+        display.textContent = progressVal + '%';
+        deltaDisplay.textContent = getDeltaText(progressVal);
       });
+
+      reworkCheck.addEventListener('change', (e) => {
+        isRework = e.target.checked;
+      });
+
+      // Pass isRework to the approval button
+      progBox._getIsRework = () => isRework;
+      drawerContent._progBox = progBox;
     }
 
     // Footer Action Buttons
@@ -495,7 +571,8 @@ export async function ReviewQueueView() {
         icon: Icons.check(),
         onClick: async () => {
           try {
-            await ReviewService.approveMatch(item.id, progressVal); // Pass progressVal here!
+            const isRework = drawerContent._progBox?._getIsRework ? drawerContent._progBox._getIsRework() : false;
+            await ReviewService.approveMatch(item.id, progressVal, null, isRework);
             Toast.success('Activity match approved! Schedule baseline actuals reconciled.');
             cleanupPoll();
             drawer.close();
@@ -546,6 +623,7 @@ export async function ReviewQueueView() {
       onClose: cleanupPoll,
       width: '620px'
     });
+    window._currentDrawer = drawer;
 
     // Auto-poll if AI analysis is currently pending
     if (isPending) {
@@ -574,4 +652,5 @@ export async function ReviewQueueView() {
   renderTable();
   return container;
 }
+
 

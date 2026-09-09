@@ -114,7 +114,7 @@ export const ReviewService = {
     return item ? this._enrichItem(item) : null;
   },
 
-  async approveMatch(reviewId, approvedProgress = undefined, reviewer = null) {
+  async approveMatch(reviewId, approvedProgress = undefined, reviewer = null, isReworkOverride = false) {
     await API.delay();
     const actor = this._resolveReviewer(reviewer, 'approve');
     const item = API.reviewItems.find(i => i.id === reviewId);
@@ -125,7 +125,12 @@ export const ReviewService = {
         const { ApiHttp } = await import('./http.js');
         await ApiHttp.request(`/reviews/${reviewId}/approve`, {
           method: 'POST',
-          body: { activityId: item.topMatch?.id, approvedProgress }
+          body: {
+            activityId: item.topMatch?.id,
+            matchedActivityId: item.topMatch?.id,
+            approvedProgress,
+            isReworkOverride
+          }
         });
         
         // Success on backend! Trigger pull to fetch the updated state

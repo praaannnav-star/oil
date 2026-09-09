@@ -6,9 +6,9 @@ import { Button } from '../components/Button.js';
 import { escapeHtml } from '../utils/dom.js';
 
 const RING_COLORS = {
-  'on-track': '#22c55e',
-  'at-risk': '#f59e0b',
-  'delayed': '#ef4444'
+  'on-track': 'var(--color-success)',
+  'at-risk': 'var(--color-warning)',
+  'delayed': 'var(--color-danger)'
 };
 
 export async function ProjectListView() {
@@ -69,7 +69,7 @@ export async function ProjectListView() {
     }
     visible.forEach(project => {
       const pct = Math.round(project.actualProgress || 0);
-      const color = RING_COLORS[project.health] || '#94a3b8';
+      const color = RING_COLORS[project.health] || 'var(--color-text-muted)';
       const pending = pendingCounts[project.id] ?? project.pendingReviewCount ?? 0;
 
       const card = document.createElement('article');

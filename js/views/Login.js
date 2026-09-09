@@ -3,7 +3,7 @@ import { SessionManager } from '../services/session-manager.js';
 import { State } from '../state.js';
 import { AppRouter } from '../router.js';
 import { Toast } from '../components/Toast.js';
-import { PetroleumCanvas } from '../components/CanvasLiquid.js';
+import { BridgeShader } from '../components/BridgeShader.js';
 
 export function LoginView() {
   const container = document.createElement('div');
@@ -110,7 +110,7 @@ export function LoginView() {
   setTimeout(() => {
     const canvas = container.querySelector('#petroleum-bg-canvas');
     if (canvas) {
-      const liquidSim = new PetroleumCanvas(canvas);
+      const liquidSim = new BridgeShader(canvas);
       // Store reference on element for cleanup
       container._liquidSim = liquidSim;
     }
