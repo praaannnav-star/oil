@@ -1,7 +1,6 @@
 import { ProjectsService } from '../services/projects.js';
 import { AnalyticsService } from '../services/analytics.js';
 import { ReportsService } from '../services/reports.js';
-import { MetricCard, Card } from '../components/Card.js';
 import { Badge } from '../components/Badge.js';
 import { Button } from '../components/Button.js';
 import { Table } from '../components/Table.js';
@@ -9,22 +8,33 @@ import { Icons } from '../components/Icons.js';
 import { AppRouter } from '../router.js';
 import { escapeHtml } from '../utils/dom.js';
 
+function monoMetric(label, value, detail) {
+  const card = document.createElement('article');
+  card.className = 'card p-3 gap-1';
+  card.innerHTML = `
+    <span class="text-xs font-bold text-muted uppercase tracking-wider">${escapeHtml(label)}</span>
+    <strong class="text-3xl font-bold text-primary font-mono mt-2">${escapeHtml(String(value))}</strong>
+    <small class="text-xs text-secondary mt-1">${escapeHtml(detail)}</small>
+  `;
+  return card;
+}
+
 export async function OverviewView() {
   const container = document.createElement('div');
   container.className = 'view-container';
 
   // Page Header
   const header = document.createElement('div');
-  header.className = 'd-flex justify-between items-center flex-wrap gap-2';
+  header.className = 'd-flex justify-between items-center flex-wrap gap-2 mb-2';
   header.innerHTML = `
     <div>
-      <h1 class="text-2xl font-bold text-primary">Executive Operations Overview</h1>
-      <p class="text-xs text-secondary mt-1">Cross-project operational intelligence linking actual field events to L5/L6 schedule performance</p>
+      <h1 class="text-2xl font-bold text-primary">Operational Pulse</h1>
+      <p class="text-xs text-secondary mt-1">Cross-project intelligence linking verified field events to L5/L6 schedule performance</p>
     </div>
   `;
 
   const actionsGroup = document.createElement('div');
-  actionsGroup.className = 'd-flex gap-2';
+  actionsGroup.className = 'd-flex gap-2 items-center';
 
   const reportBtn = Button({
     text: 'Report Progress',
@@ -51,71 +61,44 @@ export async function OverviewView() {
   const metrics = await AnalyticsService.getExecutiveMetrics();
   const kpiGrid = document.createElement('div');
   kpiGrid.className = 'd-grid grid-4 gap-3';
-
-  kpiGrid.appendChild(MetricCard({
-    label: 'ACTIVE INFRA PROJECTS',
-    value: metrics.totalProjects,
-    subtext: 'OIL Major Capital Works',
-    icon: Icons.projects()
-  }));
-
-  kpiGrid.appendChild(MetricCard({
-    label: 'DELAYED ACTIVITIES (L5/L6)',
-    value: metrics.totalDelayedActs,
-    status: 'danger',
-    subtext: '4 activities requiring corrective action',
-    icon: Icons.alert()
-  }));
-
-  kpiGrid.appendChild(MetricCard({
-    label: 'PENDING FIELD REVIEWS',
-    value: metrics.pendingReviews,
-    status: 'warning',
-    subtext: 'Awaiting planner reconciliation',
-    icon: Icons.review()
-  }));
-
-  kpiGrid.appendChild(MetricCard({
-    label: 'EVIDENCE COVERAGE',
-    value: `${metrics.avgCoverage}%`,
-    status: 'success',
-    subtext: 'Photo & inspection quality audit',
-    icon: Icons.evidence()
-  }));
+  kpiGrid.append(
+    monoMetric('ACTIVE INFRA PROJECTS', metrics.totalProjects, 'OIL capital works portfolio'),
+    monoMetric('DELAYED L5/L6 ACTIVITIES', metrics.totalDelayedActs, 'Requires corrective action'),
+    monoMetric('PENDING FIELD REVIEWS', metrics.pendingReviews, 'Awaiting planner reconciliation'),
+    monoMetric('EVIDENCE COVERAGE', `${metrics.avgCoverage}%`, 'Photo and inspection quality audit')
+  );
 
   container.appendChild(kpiGrid);
 
   // "What changed since yesterday?" Intelligence Box (Mandatory Core Feature)
   const prj = await ProjectsService.getProject('PRJ-OIL-DUL-001');
   const intelligenceCard = document.createElement('div');
-  intelligenceCard.className = 'card p-4 gap-3';
-  intelligenceCard.style.background = 'linear-gradient(180deg, rgba(37, 99, 235, 0.08) 0%, var(--color-surface) 100%)';
-  intelligenceCard.style.borderColor = 'rgba(37, 99, 235, 0.35)';
+  intelligenceCard.className = 'card gap-3';
 
   intelligenceCard.innerHTML = `
-    <div class="card-header p-0 mb-1">
-      <div class="d-flex items-center gap-2">
-        <span class="text-primary">${Icons.sparkle()}</span>
-        <h3 class="card-title text-md">WHAT CHANGED SINCE YESTERDAY?</h3>
+    <div class="d-flex justify-between items-center border-b pb-2 mb-2" style="border-color: var(--color-border-subtle)">
+      <div>
+        <h3 class="card-title">Delivery signal</h3>
+        <p class="card-subtitle">What changed since yesterday across verified project activity.</p>
       </div>
-      <span class="badge badge-in-progress">DAILY OPERATIONAL INTELLIGENCE</span>
+      <span class="badge badge-pending">DAILY BRIEF</span>
     </div>
   `;
 
   // Derived from real field data — no hardcoded intelligence blocks
   const digestSignals = await ReportsService.summarizeDailyDigest('PRJ-OIL-DUL-001');
-  const toneClass = { success: 'text-success', info: 'text-info', danger: 'text-danger', warning: 'text-warning' };
   const digestGrid = document.createElement('div');
-  digestGrid.className = 'd-grid grid-3 gap-3 mt-1';
+  digestGrid.className = 'd-grid grid-3 gap-3';
   digestSignals.forEach(signal => {
     const cell = document.createElement('div');
-    cell.className = 'card p-3 gap-1';
+    cell.className = 'p-3 rounded';
     cell.style.background = 'var(--color-surface-el)';
+    cell.style.border = '1px solid var(--color-border-subtle)';
     const h = document.createElement('div');
-    h.className = `text-xs font-bold font-mono ${toneClass[signal.tone] || 'text-secondary'}`;
+    h.className = 'text-xs font-bold font-mono text-primary';
     h.textContent = signal.headline;
     const d = document.createElement('div');
-    d.className = 'text-xs text-secondary';
+    d.className = 'text-xs text-secondary mt-1';
     d.textContent = signal.detail;
     cell.appendChild(h);
     cell.appendChild(d);
@@ -127,12 +110,15 @@ export async function OverviewView() {
   // Projects Portfolio Table
   const projects = await ProjectsService.getProjects();
   const portfolioSection = document.createElement('div');
-  portfolioSection.className = 'card p-4 gap-3';
+  portfolioSection.className = 'card gap-3';
 
   portfolioSection.innerHTML = `
-    <div class="card-header p-0 mb-1">
-      <h3 class="card-title">Active Infrastructure Projects Portfolio</h3>
-      <span class="text-xs text-muted">Oil India Limited Strategic Capital Works</span>
+    <div class="d-flex justify-between items-center border-b pb-2 mb-2" style="border-color: var(--color-border-subtle)">
+      <div>
+        <h3 class="card-title">Project health</h3>
+        <p class="card-subtitle">Schedule progress, health, and review readiness by active project.</p>
+      </div>
+      <span class="badge badge-pending">PORTFOLIO</span>
     </div>
   `;
 
@@ -197,7 +183,7 @@ export async function OverviewView() {
   const prjTable = Table({
     columns: prjColumns,
     data: projects,
-    onRowClick: (row) => AppRouter.navigate(`/projects/${row.id}`)
+    onRowClick: (row) => AppRouter.navigate(\`/projects/\${row.id}\`)
   });
   portfolioSection.appendChild(prjTable);
   container.appendChild(portfolioSection);
