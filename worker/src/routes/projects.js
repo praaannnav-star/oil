@@ -8,6 +8,7 @@
 import { json, err } from '../lib/http.js';
 import { mapProject, projectToRow, mapActivity, mapReview, mapReport, mapSurvey } from '../lib/d1.js';
 import { getPublicStats, getBenchmarkStats } from '../lib/stats.js';
+import { seedProjectActivities } from '../lib/wbs-seed.js';
 
 const CLASSIFICATIONS = {
   projectType: ['Pipeline', 'Plant', 'Substation', 'Roads', 'Drilling', 'Other'],
@@ -91,6 +92,14 @@ export default [
         p.lat, p.lng, p.start_date, p.target_finish, p.health, p.spi, p.planned_progress, p.actual_progress,
         p.variance, p.delayed_activities_count, p.pending_review_count, p.evidence_coverage, p.extras_json
       ).run();
+
+      // Automatically generate realistic baseline L1-L6 WBS activities for the new project
+      try {
+        await seedProjectActivities(db, p.id, p.project_type || 'Plant', p.start_date, p.target_finish);
+      } catch (seedErr) {
+        console.warn('Auto-seed activities for new project failed:', seedErr);
+      }
+
       await audit.append({
         id: `AUD-${Date.now()}`,
         activityId: null,

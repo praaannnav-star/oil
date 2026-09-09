@@ -91,6 +91,9 @@ export function matchActivity(extractedEvent, activities) {
       if (actCode && (lowerTag.includes(actCode) || lowerAct.includes(actCode))) {
         score += 55;
         signals.push({ label: `Direct WBS Code match (${act.code})`, match: true });
+      } else if (lowerTag && lowerTag !== 'general area' && (actCode.includes(lowerTag) || actName.includes(lowerTag))) {
+        score += 40;
+        signals.push({ label: `Asset/Tag match (${extractedEvent.assetTag})`, match: true });
       } else if (lowerTag.includes('b2') && (actCode.includes('b2') || actName.includes('b2'))) {
         score += 35;
         signals.push({ label: 'Asset identifier verified (Foundation B2)', match: true });
@@ -102,9 +105,15 @@ export function matchActivity(extractedEvent, activities) {
         signals.push({ label: '16" Gas Suction Header asset verified', match: true });
       }
 
-      if (lowerAct.includes('pour') && actName.includes('pour')) {
-        score += 10;
-        signals.push({ label: 'Terminology semantic alignment ("pour", "concrete")', match: true });
+      // Semantic terminology & token overlap
+      const actWords = actName.toLowerCase().split(/[\s,–\/\-]+/).filter(w => w.length >= 4);
+      let matchedWords = 0;
+      for (const w of actWords) {
+        if (lowerAct.includes(w)) matchedWords++;
+      }
+      if (matchedWords > 0) {
+        score += Math.min(25, matchedWords * 10);
+        signals.push({ label: `Semantic keywords matched (${matchedWords} terminology overlap)`, match: true });
       }
 
       const hasWindow = !!(act.plannedStart && act.plannedFinish);

@@ -94,7 +94,10 @@ export const ReportsService = {
 
     // Asset extraction
     let assetTag = 'General Area';
-    if (lower.includes('foundation b2') || lower.includes('b2')) {
+    const codeMatch = transcript ? transcript.match(/[A-Z]{2,5}-[A-Z0-9]+-[0-9]+/i) : null;
+    if (codeMatch) {
+      assetTag = codeMatch[0].toUpperCase();
+    } else if (lower.includes('foundation b2') || lower.includes('b2')) {
       assetTag = 'Foundation Block B2 (Pad 14)';
     } else if (lower.includes('foundation b3') || lower.includes('b3')) {
       assetTag = 'Foundation Block B3';
@@ -164,6 +167,9 @@ export const ReportsService = {
         if (actCode && (lowerTag.includes(actCode) || lowerAct.includes(actCode))) {
           score += 55;
           signals.push({ label: `Direct WBS Code match (${act.code})`, match: true });
+        } else if (lowerTag && lowerTag !== 'general area' && (actCode.includes(lowerTag) || actName.includes(lowerTag))) {
+          score += 40;
+          signals.push({ label: `Asset/Tag match (${extractedEvent.assetTag})`, match: true });
         } else if (lowerTag.includes('b2') && (actCode.includes('b2') || actName.includes('b2'))) {
           score += 35;
           signals.push({ label: 'Asset identifier verified (Foundation B2)', match: true });
@@ -175,10 +181,15 @@ export const ReportsService = {
           signals.push({ label: '16" Gas Suction Header asset verified', match: true });
         }
 
-        // Semantic terminology
-        if (lowerAct.includes('pour') && actName.includes('pour')) {
-          score += 10;
-          signals.push({ label: 'Terminology semantic alignment ("pour", "concrete")', match: true });
+        // Semantic terminology & token overlap
+        const actWords = actName.toLowerCase().split(/[\s,–\/\-]+/).filter(w => w.length >= 4);
+        let matchedWords = 0;
+        for (const w of actWords) {
+          if (lowerAct.includes(w)) matchedWords++;
+        }
+        if (matchedWords > 0) {
+          score += Math.min(25, matchedWords * 10);
+          signals.push({ label: `Semantic keywords matched (${matchedWords} terminology overlap)`, match: true });
         }
 
         // Schedule window validation — only claim an active window when the
