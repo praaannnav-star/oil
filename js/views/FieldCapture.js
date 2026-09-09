@@ -265,7 +265,7 @@ export async function FieldCaptureView() {
       step3Header.className = 'd-flex items-center gap-2';
       step3Header.innerHTML = `
         <span class="badge badge-in-progress" style="font-size:12px; width:24px; height:24px; border-radius:50%; justify-content:center; padding:0;">3</span>
-        <strong class="text-md text-primary">Schedule-Linking Matcher</strong>
+        <strong class="text-md text-primary">Matcher</strong>
       `;
       matchSection.appendChild(step3Header);
 

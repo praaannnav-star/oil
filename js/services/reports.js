@@ -137,7 +137,7 @@ export const ReportsService = {
     };
   },
 
-  // Intelligent Schedule-Linking Matcher
+  // Intelligent Matcher
   async matchActivity(extractedEvent, candidateActivities = null) {
     await API.delay(200);
     const pool = candidateActivities || API.activities;
