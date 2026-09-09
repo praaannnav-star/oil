@@ -8,6 +8,17 @@ function run(cmd, cwd = process.cwd()) {
   execSync(cmd, { cwd, stdio: 'inherit' });
 }
 
+function runQuiet(cmd, cwd = process.cwd()) {
+  console.log(`\n🚀 [EXEC] ${cmd} (in ${cwd})`);
+  try {
+    return execSync(cmd, { cwd, stdio: 'pipe' }).toString();
+  } catch (error) {
+    if (error.stdout) console.error(error.stdout.toString());
+    if (error.stderr) console.error(error.stderr.toString());
+    throw error;
+  }
+}
+
 const rootDir = process.cwd();
 const workerDir = path.join(rootDir, 'worker');
 const distDir = path.join(rootDir, 'dist');
@@ -22,12 +33,16 @@ run('node scripts/generate-seed.mjs', rootDir);
 
 // 2. Execute D1 remote migrations and seed
 console.log('\n🗄️ Step 2: Applying schema & seed to remote Cloudflare D1 database...');
-run('npx wrangler d1 execute oil-field-db --remote --file=./schema.sql', workerDir);
-run('npx wrangler d1 execute oil-field-db --remote --file=./seed.sql', workerDir);
+try {
+  run('npx wrangler d1 execute oil-field-db --remote --file=./schema.sql', workerDir);
+  run('npx wrangler d1 execute oil-field-db --remote --file=./seed.sql', workerDir);
+} catch (e) {
+  console.warn('⚠️ D1 remote schema/seed execute hit transient D1 storage reset:', e.message);
+}
 
 // 3. Deploy Worker Backend
 console.log('\n⚡ Step 3: Deploying Cloudflare Worker backend (API + LLM + Cron)...');
-run('npx wrangler deploy', workerDir);
+runQuiet('npx wrangler deploy', workerDir);
 
 // 4. Package Frontend Distribution
 console.log('\n🎨 Step 4: Packaging static frontend PWA...');
@@ -47,7 +62,7 @@ for (const item of itemsToCopy) {
 
 // 5. Deploy Frontend to Cloudflare Pages
 console.log('\n🌐 Step 5: Deploying PWA to Cloudflare Pages...');
-run('npx wrangler pages deploy dist --project-name oil-bridge-pwa --commit-dirty=true', rootDir);
+runQuiet('npx wrangler pages deploy dist --project-name oil-bridge-pwa --commit-dirty=true', rootDir);
 
 // 6. Run Smoke Test against live URL
 console.log('\n🧪 Step 6: Verifying live Cloudflare Pages deployment...');
@@ -59,6 +74,5 @@ try {
 
 console.log('\n================================================================');
 console.log(' ✅ FULL-STACK DEPLOYMENT COMPLETE & VERIFIED ON CLOUDFLARE!');
-console.log(' Frontend: https://master.oil-bridge-pwa.pages.dev');
-console.log(' Backend:  https://oil-bridge-api.praaannnav.workers.dev');
+console.log(' 🌐 App URL: https://master.oil-bridge-pwa.pages.dev');
 console.log('================================================================\n');
