@@ -72,7 +72,7 @@ export async function OverviewView() {
   container.appendChild(kpiGrid);
 
   // "What changed since yesterday?" Intelligence Box (Mandatory Core Feature)
-  const currentProjectId = State.getState().currentProjectId || 'PRJ-OIL-DUL-001';
+  const currentProjectId = State.getState().currentProjectId || null;
   const intelligenceCard = document.createElement('div');
   intelligenceCard.className = 'card gap-3';
 

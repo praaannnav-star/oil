@@ -141,15 +141,33 @@ function setupProjectSelector() {
   const refresh = async () => {
     const projects = await ProjectsService.getProjects();
     const activeId = State.getState().currentProjectId;
+
     projectSelect.innerHTML = projects.map(project => {
-      const progLabel = project.actualProgress != null ? `${project.actualProgress}%` : (project.budget ? project.budget : '0%');
+      const progLabel = project.actualProgress != null ? `${project.actualProgress}%` : '0%';
       return `<option value="${escapeHtml(project.id)}">${escapeHtml(project.name)} (${escapeHtml(progLabel)})</option>`;
     }).join('');
-    projectSelect.value = projects.some(project => project.id === activeId) ? activeId : (projects[0]?.id || '');
+
+    // Determine which project to select:
+    // 1. Use the current project if it's in the list
+    // 2. Otherwise pick the first non-completed active project
+    // 3. Finally fall back to the first project in the list
+    let selectedId = (activeId && projects.some(p => p.id === activeId)) ? activeId : null;
+    if (!selectedId) {
+      const activeProject = projects.find(p => p.health !== 'completed' && p.status !== 'completed');
+      selectedId = activeProject?.id || projects[0]?.id || '';
+    }
+
+    projectSelect.value = selectedId;
+
+    // Sync state so all views use the correct project from first load
+    if (selectedId && selectedId !== State.getState().currentProjectId) {
+      State.setProject(selectedId);
+    }
   };
   window.addEventListener('projects:changed', refresh);
   refresh();
 }
+
 
 function setupUserProfileListener() {
   const userMount = document.getElementById('header-user-mount');

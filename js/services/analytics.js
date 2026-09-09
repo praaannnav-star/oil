@@ -218,7 +218,7 @@ export const AnalyticsService = {
         kpis: {
           portfolioSpi,
           spiDrag,
-          reviewVelocityHours: reviews.length > 0 ? Number((reviews.reduce((acc, r) => acc + (r.durationHours || 3.8), 0) / reviews.length).toFixed(1)) : null,
+          reviewVelocityHours: reviews.length > 0 ? Number((reviews.reduce((acc, r) => acc + (r.durationHours || 0), 0) / reviews.length).toFixed(1)) : null,
           fieldReportAdoptionPct: activities.length > 0 ? Math.min(100, Math.round(((API.reports || []).length / activities.length) * 100)) : 0,
           firstPassAccuracyPct,
           delayedActivitiesCount: activities.filter(a => a.status === 'delayed').length,
@@ -251,8 +251,8 @@ export const AnalyticsService = {
       totalProjects: meta.totalProjects ?? (API.projects?.length || 0),
       totalDelayedActs: kpis.delayedActivitiesCount ?? 0,
       pendingReviews: kpis.pendingReviewsCount ?? 0,
-      avgCoverage: kpis.fieldReportAdoptionPct ?? 92,
-      portfolioSpi: kpis.portfolioSpi ?? 1.0,
+      avgCoverage: kpis.fieldReportAdoptionPct ?? 0,
+      portfolioSpi: kpis.portfolioSpi ?? 0,
       ...kpis
     };
   },

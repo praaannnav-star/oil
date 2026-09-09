@@ -244,14 +244,14 @@ export async function AnalyticsView() {
         const idx = scurve.indexOf(lastWithAct);
         currentPoint = {
           x: getX(idx),
-          y: getY(lastWithAct.actual ?? 62),
-          label: `${lastWithAct.actual ?? 62}% Actual`,
-          planned: lastWithAct.planned ?? 68.5,
-          actual: lastWithAct.actual ?? 62
+          y: getY(lastWithAct.actual ?? 0),
+          label: `${lastWithAct.actual ?? 0}% Actual`,
+          planned: lastWithAct.planned ?? 0,
+          actual: lastWithAct.actual ?? 0
         };
       }
 
-      const currentVariance = currentPoint ? Number(((currentPoint.actual ?? 62) - (currentPoint.planned ?? 68.5)).toFixed(1)) : -6.5;
+      const currentVariance = currentPoint ? Number(((currentPoint.actual ?? 0) - (currentPoint.planned ?? 0)).toFixed(1)) : 0;
       const varianceLabel = currentVariance >= 0
         ? `+${currentVariance}% Ahead of Baseline`
         : `${currentVariance}% Schedule Drag`;
