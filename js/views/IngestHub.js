@@ -156,15 +156,13 @@ export async function IngestHubView() {
       }
     });
 
-    // Demo Scenario loader
     card.querySelector('#btn-load-demo-sheet').addEventListener('click', () => {
       const demoCsv = `WBS,Activity Description,Discipline,Progress %,Status,Date,Remarks
-DUL-CIV-01,Control Building Structural Column Retrofitting,Civil,100%,Completed,2026-03-09,Final pour completed and cube test passed
-DUL-PIP-SKD,Dual-Filter Coalescer Skid Alignment,Piping,100%,Completed,2026-03-09,Hydrotest certified by third party inspector
-DUL-ELE-UPS,120kVA Industrial UPS Bank & Battery Rack Commissioning,Electrical,85%,In Progress,2026-03-09,Battery bank charging cycle 2 in progress
-DUL-INS-01,SCADA Telemetry & Emergency Shutdown System Loop Check,Instrumentation,40%,Delayed,2026-03-09,Delay due to vendor dispatch delay of pressure transmitters
-DUL-PIP-HYD,Skid High-Pressure Nitrogen Purging & Hydrotest,Piping,100%,Completed,2026-03-08,Pressure held at 120 bar for 4 hours
-DUL-HSE-01,Safety Case Statutory PTW Environmental Clearance,HSE,95%,In Progress,2026-03-09,Fire barrier inspection signed off`;
+CIV-B2-003,Foundation B2 Concrete Pouring & Ultrasonic Integrity Testing,Civil,100%,Completed,2026-03-09,Final pour completed and cube test passed
+PIP-HDR-014,16" Gas Suction Header Spool Erection & Butt-Weld Tie-in,Piping,80%,In Progress,2026-03-09,Welding ongoing for J-45 to J-48
+ELE-TR-004,33kV / 6.6kV 5MVA Step-Down Transformer Placement on Plinth,Electrical,100%,Completed,2026-03-09,Placement complete and bolted
+PIP-NDT-008,Radiographic Examination (RT 100%) on Header Joint J-41 to J-48,Piping,40%,Delayed,2026-03-09,Delay due to broken RT machine at site
+CIV-B2-001,Sub-grade Compaction & Lean Concrete Mudmat (PCC M15),Civil,100%,Completed,2026-03-08,Passed inspection`;
 
       const parsed = IngestService.parseCsv(demoCsv);
       parsedSheetData = {
@@ -333,10 +331,8 @@ DUL-HSE-01,Safety Case Statutory PTW Environmental Clearance,HSE,95%,In Progress
           const previewImg = card.querySelector('#ocr-preview-img');
           previewImg.src = imageBase64;
           card.querySelector('#ocr-img-preview').classList.remove('d-none');
-          if (textarea.value.trim() === '') {
-            textarea.value = `[OCR Extract from ${file.name}]\nCIVIL:\n1. Reinforced column footing slab concrete pour finished.\nPIPING:\n2. Dual filter coalescer skid erection & alignment completed.\nELECTRICAL:\n3. Substation UPS battery rack charging 80%.`;
-          }
-          Toast.info(`Loaded image: ${file.name}`);
+          // Removed the fake hardcoded OCR text auto-fill
+          Toast.info(`Loaded image: ${file.name}. Ready to process OCR.`);
         };
         reader.readAsDataURL(file);
       }
@@ -349,24 +345,23 @@ DATE: 09-MAR-2026  LOCATION: DULIAJAN CGGS HUB
 REPORTED BY: SITE IN-CHARGE (MORNING SHIFT)
 
 [CIVIL WORKS]
-1. Blast-Resistant Control Room Roof Installation DUL-CIV-ROOF completed today with final seal check.
-2. Foundation footing slab curing in progress.
+1. Foundation B2 Concrete Pouring & Ultrasonic Integrity Testing CIV-B2-003 completed today.
+2. Curing Period & 7-Day Cube Compressive Strength Break Test CIV-B2-004 in progress.
 
 [PROCESS PIPING & VALVES]
-3. Skid High-Pressure Hydrotest & Nitrogen Purging DUL-PIP-HYD successfully finished at 120 bar.
-4. Spool fab & erection for Line-24 continuing at manifold area.
+3. 16" Gas Suction Header Spool Erection & Butt-Weld Tie-in PIP-HDR-014 successfully finished.
+4. Radiographic Examination PIP-NDT-008 continuing at manifold area.
 
 [ELECTRICAL & INSTRUMENTATION]
-5. 120kVA Industrial UPS Bank & Battery Rack Commissioning DUL-ELE-UPS tested and at 100% readiness.
-6. Site Acceptance Testing & SCADA Handover DUL-INS-SAT started with telemetry point checks.`;
+5. 33kV / 6.6kV 5MVA Step-Down Transformer Placement ELE-TR-004 tested and at 100% readiness.`;
 
       Toast.success('Loaded realistic typed DPR excerpt scenario.');
     });
 
     card.querySelector('#btn-process-ocr').addEventListener('click', async () => {
       const text = textarea.value.trim();
-      if (!text) {
-        Toast.error('Please enter or scan some DPR text first.');
+      if (!text && !imageBase64) {
+        Toast.error('Please enter text or upload an image for OCR first.');
         return;
       }
 
@@ -382,6 +377,10 @@ REPORTED BY: SITE IN-CHARGE (MORNING SHIFT)
           filename: 'dpr-site-diary.txt',
           autoSubmit: false
         });
+
+        if (!text && res.normalizedOcrText) {
+          textarea.value = res.normalizedOcrText;
+        }
 
         processedItems = res.items || [];
         Toast.success(`Extracted ${res.totalSegments} activity segments (${res.matchedCount} matched).`);
