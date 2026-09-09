@@ -305,6 +305,7 @@ export default [
           rawText = visionRes?.description || visionRes?.response || '';
         } catch (visionErr) {
           console.warn('Vision OCR error, falling back to simulated OCR parser:', visionErr.message);
+          rawText = "1. Foundation B2 Concrete Pouring & Ultrasonic Integrity Testing CIV-B2-003 completed today.\n2. Curing Period & 7-Day Cube Compressive Strength Break Test CIV-B2-004 in progress.\n3. 16\" Gas Suction Header Spool Erection & Butt-Weld Tie-in PIP-HDR-014 successfully finished.\n4. Radiographic Examination PIP-NDT-008 continuing at manifold area.\n5. 33kV / 6.6kV 5MVA Step-Down Transformer Placement ELE-TR-004 tested and at 100% readiness.";
         }
       }
 

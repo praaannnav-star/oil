@@ -160,8 +160,11 @@ export const ReportsService = {
           signals.push({ label: `Discipline mismatch (${act.discipline} vs ${extractedEvent.discipline})`, match: false });
         }
 
-        // Asset code/tag match
-        if (lowerTag.includes('b2') && (actCode.includes('b2') || actName.includes('b2'))) {
+        // Dynamic WBS Exact Match
+        if (actCode && (lowerTag.includes(actCode) || lowerAct.includes(actCode))) {
+          score += 55;
+          signals.push({ label: `Direct WBS Code match (${act.code})`, match: true });
+        } else if (lowerTag.includes('b2') && (actCode.includes('b2') || actName.includes('b2'))) {
           score += 35;
           signals.push({ label: 'Asset identifier verified (Foundation B2)', match: true });
         } else if (lowerTag.includes('jb-102') && (actCode.includes('102') || actName.includes('jb-102'))) {

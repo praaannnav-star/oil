@@ -149,12 +149,18 @@ function setupProjectSelector() {
 
     // Determine which project to select:
     // 1. Use the current project if it's in the list
-    // 2. Otherwise pick the first non-completed active project
-    // 3. Finally fall back to the first project in the list
+    // 2. Prefer the CGGS demo project (PRJ-OIL-2026-01) if available
+    // 3. Otherwise pick the first non-completed active project
+    // 4. Finally fall back to the first project in the list
     let selectedId = (activeId && projects.some(p => p.id === activeId)) ? activeId : null;
     if (!selectedId) {
-      const activeProject = projects.find(p => p.health !== 'completed' && p.status !== 'completed');
-      selectedId = activeProject?.id || projects[0]?.id || '';
+      const cggsProject = projects.find(p => p.id === 'PRJ-OIL-2026-01');
+      if (cggsProject) {
+        selectedId = cggsProject.id;
+      } else {
+        const activeProject = projects.find(p => p.health !== 'completed' && p.status !== 'completed');
+        selectedId = activeProject?.id || projects[0]?.id || '';
+      }
     }
 
     projectSelect.value = selectedId;

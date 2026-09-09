@@ -15,11 +15,21 @@ export function extractRules(transcript) {
   else if (/delay|halt|shortage|stopped|breakdown/.test(lower)) status = 'Delayed';
 
   let assetTag = 'General Area';
-  if (/foundation b2|\bb2\b/.test(lower)) assetTag = 'Foundation Block B2 (Pad 14)';
-  else if (/foundation b3|\bb3\b/.test(lower)) assetTag = 'Foundation Block B3';
-  else if (/foundation b1|\bb1\b/.test(lower)) assetTag = 'Foundation Block B1';
-  else if (/j-44|suction header|16 inch|16"/.test(lower)) assetTag = '16" Gas Suction Header (Joint J-44)';
-  else if (/jb-?102/.test(lower)) assetTag = 'Junction Box JB-102';
+  // Dynamically extract standard WBS codes like CIV-B2-003, PIP-HDR-014
+  const codeMatch = transcript ? transcript.match(/[A-Z]{3,}-[A-Z0-9]+-[0-9]+/i) : null;
+  if (codeMatch) {
+    assetTag = codeMatch[0].toUpperCase();
+  } else if (/foundation b2|\bb2\b/.test(lower)) {
+    assetTag = 'Foundation Block B2 (Pad 14)';
+  } else if (/foundation b3|\bb3\b/.test(lower)) {
+    assetTag = 'Foundation Block B3';
+  } else if (/foundation b1|\bb1\b/.test(lower)) {
+    assetTag = 'Foundation Block B1';
+  } else if (/j-44|suction header|16 inch|16"/.test(lower)) {
+    assetTag = '16" Gas Suction Header (Joint J-44)';
+  } else if (/jb-?102/.test(lower)) {
+    assetTag = 'Junction Box JB-102';
+  }
 
   let blocker = 'None';
   if (/shortage/.test(lower)) blocker = 'Material / parts shortage reported';
@@ -77,7 +87,11 @@ export function matchActivity(extractedEvent, activities) {
         signals.push({ label: `Discipline mismatch (${act.discipline} vs ${extractedEvent.discipline})`, match: false });
       }
 
-      if (lowerTag.includes('b2') && (actCode.includes('b2') || actName.includes('b2'))) {
+      // Dynamic WBS Exact Match
+      if (actCode && (lowerTag.includes(actCode) || lowerAct.includes(actCode))) {
+        score += 55;
+        signals.push({ label: `Direct WBS Code match (${act.code})`, match: true });
+      } else if (lowerTag.includes('b2') && (actCode.includes('b2') || actName.includes('b2'))) {
         score += 35;
         signals.push({ label: 'Asset identifier verified (Foundation B2)', match: true });
       } else if (lowerTag.includes('jb-102') && (actCode.includes('102') || actName.includes('jb-102'))) {
