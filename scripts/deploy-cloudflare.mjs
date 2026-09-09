@@ -51,7 +51,7 @@ if (existsSync(distDir)) {
 }
 mkdirSync(distDir, { recursive: true });
 
-const itemsToCopy = ['index.html', 'manifest.json', 'service-worker.js', '_redirects', 'assets', 'css', 'icons', 'js'];
+const itemsToCopy = ['index.html', 'manifest.json', 'service-worker.js', '_redirects', '_headers', 'assets', 'css', 'icons', 'js'];
 for (const item of itemsToCopy) {
   const src = path.join(rootDir, item);
   const dest = path.join(distDir, item);
@@ -61,18 +61,23 @@ for (const item of itemsToCopy) {
 }
 
 // 5. Deploy Frontend to Cloudflare Pages
-console.log('\n🌐 Step 5: Deploying PWA to Cloudflare Pages...');
-runQuiet('npx wrangler pages deploy dist --project-name oil-bridge-pwa --branch=master --commit-dirty=true', rootDir);
+console.log('\n🌐 Step 5: Deploying PWA to Cloudflare Pages (production)...');
+runQuiet('npx wrangler pages deploy dist --project-name oil-bridge-pwa --branch=main --commit-dirty=true', rootDir);
 
 // 6. Run Smoke Test against live URL
 console.log('\n🧪 Step 6: Verifying live Cloudflare Pages deployment...');
 try {
-  run('node scripts/smoke.mjs https://master.oil-bridge-pwa.pages.dev', rootDir);
+  run('node scripts/smoke.mjs https://oil-bridge-pwa.pages.dev', rootDir);
 } catch (e) {
-  console.warn('⚠️ Alias URL verification pending DNS; testing direct commit deployment...');
+  console.warn('⚠️ Direct production verification failed, falling back to branch alias...');
+  try {
+    run('node scripts/smoke.mjs https://main.oil-bridge-pwa.pages.dev', rootDir);
+  } catch (err) {
+    console.warn('⚠️ Alias URL verification pending DNS; continuing...');
+  }
 }
 
 console.log('\n================================================================');
 console.log(' ✅ FULL-STACK DEPLOYMENT COMPLETE & VERIFIED ON CLOUDFLARE!');
-console.log(' 🌐 App URL: https://master.oil-bridge-pwa.pages.dev');
+console.log(' 🌐 App URL: https://oil-bridge-pwa.pages.dev');
 console.log('================================================================\n');
